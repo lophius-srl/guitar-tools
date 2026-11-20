@@ -205,6 +205,10 @@ $('playBtn').onclick=()=>{
   render();});
 if(FROM_TAB)$('fromtab').hidden=false;
 render();
+window.addEventListener('pageshow',e=>{if(!e.persisted)return;
+  try{const m=JSON.parse(localStorage.getItem('gt.scale')||'null'),k=m&&({min:'aeo'}[m.sk]||m.sk);
+    if(m&&SC_KEYS().includes(k)&&(String(m.r)!==$('root').value||k!==SK())){$('root').value=String(m.r);$('scale').value=k;st.pos=0;$('fromtab').hidden=m.src==='gammes';render();}}catch(err){}
+});
 // Bascule horizontal / vertical quand la largeur change (rotation du téléphone, fenêtre)
 const ro=new ResizeObserver(()=>{if(($('neck').clientWidth<560)!==VERT&&!timer)render();});ro.observe($('neck'));
 }

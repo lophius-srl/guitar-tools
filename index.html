@@ -100,7 +100,8 @@ D|-2-----------|---2---------|-------------|
 A|-------------|-3-----------|-------------|
 E|-------------|-------------|-------------|`;
 const $=id=>document.getElementById(id);
-$('tab').value=EX;
+// Reprend la dernière tablature collée (sinon l'exemple)
+{let t=null;try{t=localStorage.getItem('gt.tab');}catch(e){}$('tab').value=t&&t.trim()?t:EX;}
 $('root').innerHTML='<option value="auto">Auto</option>'+FR.map((n,i)=>`<option value="${i}">${n} (${SH[i]})</option>`).join('');
 $('scale').innerHTML='<option value="auto">Auto</option>'+Object.entries(SCALES).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
 const isD=c=>c>='0'&&c<='9';
@@ -448,5 +449,10 @@ document.addEventListener('click',async e=>{
   finally{b.disabled=false;}
 });
 $('go').onclick=run;['root','scale','lab','nom','per','fix'].forEach(id=>$(id).onchange=run);
+// Analyse automatique dès qu'on colle ou modifie la tablature, et sauvegarde dans le navigateur
+let TT=null;$('tab').addEventListener('input',()=>{
+  try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}
+  clearTimeout(TT);TT=setTimeout(run,400);
+});
 run();
 </script></body></html>
