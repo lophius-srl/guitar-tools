@@ -44,6 +44,11 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .sugg button{font-size:14px;padding:6px 12px;min-height:36px}
 .sugg button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
 
+.cands{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 0}
+.cand{display:inline-flex;flex-direction:column;align-items:flex-start;font-size:14px;padding:6px 12px;line-height:1.3}
+.cand small{color:var(--mut);font-size:12px}
+.cand em{font-style:normal;font-size:11px;color:var(--mut)}
+.cand.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .bar{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:4px 8px;font-size:15px}
 .bar small{color:var(--mut);font-size:11px}
@@ -244,6 +249,17 @@ function keyScore(ms,k,h){
 }
 function globalKey(ms){const h=hist(ms.flatMap(m=>m.notes));return KEYS.reduce((a,b)=>keyScore(ms,b,h)>keyScore(ms,a,h)?b:a,0);}
 
+// Lien entre deux tonalités (pour expliquer les candidates)
+function relation(a,b){
+  if(a===b)return '';
+  const ra=kRoot(a),rb=kRoot(b);
+  if(kMin(a)!==kMin(b)&&ra===rb)return 'même tonique, autre mode';
+  if(kMin(a)!==kMin(b)&&cov([...Array(12).keys()].map(c=>kScale(a).includes((c-ra+12)%12)?1:0),b)>.99)return 'relative : mêmes notes';
+  if(!kMin(a)&&!kMin(b)&&((rb-ra+12)%12===7||(ra-rb+12)%12===7))return 'tonalité voisine (une note change)';
+  if(kMin(a)&&kMin(b)&&((rb-ra+12)%12===7||(ra-rb+12)%12===7))return 'tonalité voisine (une note change)';
+  return '';
+}
+let FORCED=null;
 // ---------- Positions pensées pour tout le morceau ----------
 // Coût d'une position pour une mesure. Si la tablature n'est pas réadaptée,
 // toute note hors de la position compte comme un déplacement de la main.
@@ -365,7 +381,11 @@ function run(){
   const ms=parse($('tab').value),all=ms.flatMap(m=>m.notes);
   if(!all.length){$('summary').hidden=false;$('summary').innerHTML='<span class="out">Aucune note reconnue. Il faut 6 lignes qui commencent par le nom de la corde (e|, B|, G|, D|, A|, E|).</span>';$('strip').innerHTML='';return;}
   // 1. Tonalité du morceau, puis tonalité de chaque mesure
-  const G=globalKey(ms),kp=keyPath(ms,G);
+  // Tonalités candidates, classées, avec un indice de confiance
+  const gh=hist(all),scores=KEYS.map(k=>keyScore(ms,k,gh)),mx=Math.max(...scores);
+  const ex=scores.map(v=>Math.exp((v-mx)*2.5)),tot=ex.reduce((a,b)=>a+b,0);
+  const cands=KEYS.map(k=>({k,p:ex[k]/tot})).sort((a,b)=>b.p-a.p).slice(0,4);
+  const auto=cands[0].k,G=FORCED!=null?FORCED:auto,kp=keyPath(ms,G);
   const ks=[];kp.forEach((k,i)=>{if(!ks.length||ks[ks.length-1].k!==k)ks.push({k,a:i,b:i});else ks[ks.length-1].b=i;});
   for(let t=1;t<ks.length;t++){const A=ks[t-1],Bs=ks[t];
     while(A.b>A.a){const m=ms[A.b],h=hist(m.notes),c=m.notes.length?chordOf(m.notes,Bs.k):null;
@@ -422,7 +442,8 @@ function run(){
   });
   const nPos=new Set(secs.filter(s=>ms.slice(s.a,s.b+1).some(m=>m.notes.length)).map(s=>s.p)).size;
   $('summary').hidden=false;
-  $('summary').innerHTML=`<h2>Tonalité du morceau</h2><p class="keyline">${kName(G,gk.mode)}</p>
+  const candHTML=`<div class="cands"><span class="muted" style="font-size:13px">Tonalités possibles :</span>${cands.map(c=>`<button class="cand ${c.k===G?'on':''}" data-k="${c.k}">${kName(c.k)} <small>${Math.round(c.p*100)} %</small>${c.k!==auto&&relation(auto,c.k)?`<em>${relation(auto,c.k)}</em>`:''}</button>`).join('')}${FORCED!=null?'<button class="cand" data-k="auto">Revenir en automatique</button>':''}</div>`;
+  $('summary').innerHTML=`<h2>Tonalité du morceau ${FORCED!=null?'<small>(choisie à la main)</small>':''}</h2><p class="keyline">${kName(G,gk.mode)}</p>${candHTML}
     ${ks.length>1?`<div class="sections">${ks.map(s=>`<div class="sec"><b>Mesures ${s.a+1}${s.b>s.a?'–'+(s.b+1):''}</b><span>${kName(s.k,s.mode)}</span>${s.k!==G?'<small>modulation</small>':''}</div>`).join('')}</div>`:''}
     <p class="muted" style="font-size:13px;margin:10px 0 0">${secs.length} section${secs.length>1?'s':''} : une section = des mesures jouées sans bouger la main. ${nPos} position${nPos>1?'s':''} utilisée${nPos>1?'s':''}.${borrowedN?` ${borrowedN} accord${borrowedN>1?'s':''} emprunté${borrowedN>1?'s':''} (degré en rouge).`:''}</p>`;
 }
@@ -434,7 +455,8 @@ A_IDS.forEach(id=>$(id).onchange=()=>{saveA();run();});
 try{const f=localStorage.getItem('gt.analyse.fix');if(f!==null)$('fix').checked=f==='1';}catch(e){}
 $('fix').onchange=()=>{try{localStorage.setItem('gt.analyse.fix',$('fix').checked?'1':'0');}catch(e){}run();};
 $('go').onclick=run;
+$('summary').addEventListener('click',e=>{const b=e.target.closest('.cand');if(!b)return;FORCED=b.dataset.k==='auto'?null:+b.dataset.k;run();});
 $('title').addEventListener('input',()=>{try{localStorage.setItem('gt.title',$('title').value);}catch(e){}});
-let TT=null;$('tab').addEventListener('input',()=>{try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}clearTimeout(TT);TT=setTimeout(run,400);});
+let TT=null;$('tab').addEventListener('input',()=>{FORCED=null;try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}clearTimeout(TT);TT=setTimeout(run,400);});
 run();
 </script></body></html>
