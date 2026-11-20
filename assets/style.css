@@ -67,7 +67,9 @@ button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:
 .card h2 small{font-weight:400;color:var(--mut);font-size:13px}
 .scroll{overflow-x:auto}
 /* Dessins qui s'adaptent à la largeur de la carte */
-.fit svg{width:100%;max-width:100%;height:auto}
+.fit svg{max-width:100%;height:auto}
+/* Manche complet (Gammes) : prend toute la largeur de la carte */
+.fit.full svg{width:100%}
 svg{display:block}
 .muted{color:var(--mut)}
 .info{font-size:14px;margin:0 0 10px}
