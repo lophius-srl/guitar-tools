@@ -80,6 +80,7 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
     <label class="field">Positions <select id="pmode"><option value="song">pensées pour le morceau</option><option value="bar">mesure par mesure</option></select></label>
     <label class="field">Points <select id="lab"><option value="both">notes + degrés</option><option value="name">notes</option><option value="deg">degrés</option></select></label>
     <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+    <label class="check"><input type="checkbox" id="fix" checked> Réadapter la tablature (doigtés dans la position)</label>
     <button class="pri grow" id="go">Analyser</button>
   </div>
 </div>
@@ -244,9 +245,11 @@ function keyScore(ms,k,h){
 function globalKey(ms){const h=hist(ms.flatMap(m=>m.notes));return KEYS.reduce((a,b)=>keyScore(ms,b,h)>keyScore(ms,a,h)?b:a,0);}
 
 // ---------- Positions pensées pour tout le morceau ----------
+// Coût d'une position pour une mesure. Si la tablature n'est pas réadaptée,
+// toute note hors de la position compte comme un déplacement de la main.
 function posCost(ns,p){
-  const out=ns.filter(n=>!inBox(n.f,p));
-  return out.filter(n=>!alts(n,p).length).length*1000+out.length*10;
+  const out=ns.filter(n=>!inBox(n.f,p)),fix=$('fix').checked;
+  return (fix?out.filter(n=>!alts(n,p).length).length:out.length)*1000+out.length*10;
 }
 function bestPos(ns){let bp=1,bs=1e9;const nz=ns.map(n=>n.f).filter(f=>f>0),ref=nz.length?Math.min(...nz):1;
   for(let p=1;p<=15;p++){const s=posCost(ns,p)+Math.abs(p-ref);if(s<bs){bs=s;bp=p;}}return bp;}
@@ -388,7 +391,7 @@ function run(){
     const bars=ms.slice(sec.a,sec.b+1),notesAll=[],segs=[],chips=[];let off=0,outS=new Set(),offPos=[];
     bars.forEach((m,j)=>{
       const ns=m.notes,i=sec.a+j;
-      if(ns.length){relocate(ns,p);}
+      if(ns.length&&$('fix').checked){relocate(ns,p);}
       segs.push(segOf(ns,m.raw));
       const multi=Object.values(ns.reduce((a,n)=>{a[n.o]=(a[n.o]||0)+1;return a;},{})).some(v=>v>1);
       let ch=ns.length?chordOf(ns,key):null;if(ch&&!multi&&ch.fit<.85)ch=null;
@@ -412,7 +415,7 @@ function run(){
       ${newKey?`<span class="secnew">Changement de tonalité : ${kName(key,ksec.mode)}</span>`:''}
       <h2>${range} <span class="pos" style="margin:0">Position ${ROM[p]||p} · cases ${p===1?'0':p} à ${p+3}</span>${notesAll.length?`<button class="playm" data-i="${si}">Écouter</button>`:''}</h2>
       <div class="chips">${chips.map((c,j)=>`<span class="bar"><small>${sec.a+j+1}</small>${c}</span>`).join('')}</div>
-      <div class="lbl0">Tablature (doigté dans la position)</div><pre class="mt fx sectab">${tabTxt.replace(/</g,'&lt;')}</pre>
+      <div class="lbl0">${$('fix').checked?'Tablature (doigté dans la position)':'Tablature (originale)'}</div><pre class="mt fx sectab">${tabTxt.replace(/</g,'&lt;')}</pre>
       ${svg?`<div class="mright secboard">${svg}</div>`:''}
       ${notes.length?`<div class="expl">${notes.join('<br>')}</div>`:''}
     </div>`);
@@ -428,6 +431,8 @@ const A_IDS=['tuning','capo','pmode','lab','nom'];
 try{const S=JSON.parse(localStorage.getItem('gt.analyse')||'{}');A_IDS.forEach(id=>{if(S[id]!=null&&[...$(id).options].some(o=>o.value===S[id]))$(id).value=S[id];});}catch(e){}
 const saveA=()=>{try{const S={};A_IDS.forEach(id=>S[id]=$(id).value);localStorage.setItem('gt.analyse',JSON.stringify(S));}catch(e){}};
 A_IDS.forEach(id=>$(id).onchange=()=>{saveA();run();});
+try{const f=localStorage.getItem('gt.analyse.fix');if(f!==null)$('fix').checked=f==='1';}catch(e){}
+$('fix').onchange=()=>{try{localStorage.setItem('gt.analyse.fix',$('fix').checked?'1':'0');}catch(e){}run();};
 $('go').onclick=run;
 $('title').addEventListener('input',()=>{try{localStorage.setItem('gt.title',$('title').value);}catch(e){}});
 let TT=null;$('tab').addEventListener('input',()=>{try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}clearTimeout(TT);TT=setTimeout(run,400);});
