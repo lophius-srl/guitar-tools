@@ -385,7 +385,7 @@ async function makePdf(){
   leg((cx,cy)=>{d.setFillColor(PC.accL);d.setDrawColor(PC.acc);d.setLineWidth(.25);d.roundedRect(cx-1.4,cy-1.4,2.8,2.8,.5,.5,'FD');},'position');
   y+=5;d.setDrawColor(PC.line);d.setLineWidth(0.3);d.line(M,y,M+PW,y);y+=3;
   // Mesures : tablature à jouer à gauche, manche à droite, ordre des notes dessous
-  const LW=62,k=1,BX=M+LW+16;
+  const LW=62,k=0.9,BX=M+LW+14;
   for(const m of REP.ms){
     const play=(m.seg||m.raw).map((r,s)=>SN[s]+'|'+r+'|');
     const ts=monoSize(play,LW-2,9),tH=6*ts*0.3528*1.35;
