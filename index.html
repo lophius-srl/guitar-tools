@@ -250,6 +250,8 @@ function run(){
     $('sugg').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('root').value=b.dataset.r;$('scale').value=b.dataset.s;run();});
   }
   const gn=namesFor(G.r,G.sk),giv=SCALES[G.sk].i;
+  // Partage la gamme trouvée avec l'onglet Gammes (même navigateur)
+  try{localStorage.setItem('gt.scale',JSON.stringify({r:G.r,sk:G.sk,ts:Date.now()}));}catch(e){}
   $('strip').innerHTML=giv.map(i=>`<div class="n ${i?'':'r'}"><b>${gn[(G.r+i)%12]}</b><small>${IV[i]}</small></div>`).join('');
   info.innerHTML=`Gamme principale : <b>${label(G)}</b> — ${G.inS}/${G.n} notes dans la gamme`+(per?'. Chaque mesure peut prendre sa propre gamme si une autre colle mieux.':'');
   MEAS=[];const fixed=[];REP={title:label(G),cov:`${G.inS}/${G.n}`,scale:giv.map(i=>gn[(G.r+i)%12]+' ('+IV[i]+')').join('  '),ms:[]};

@@ -24,6 +24,7 @@
   </div>
 </div>
 
+<div class="info" id="fromtab" hidden>Gamme reprise de ta dernière analyse dans Tab → Gamme.</div>
 <div class="strip" id="strip"></div>
 
 <div class="card">
@@ -82,6 +83,7 @@ const CATS=[
   ['insen','In-sen',[0,1,5,7,10]]]]
 ];
 const SC={};CATS.forEach(c=>c[1].forEach(([k,n,i])=>SC[k]={n,i}));
+const SC_KEYS=()=>Object.keys(SC);
 const MINOR=['dor','phr','aeo','loc','pmin','harm','melo','blues','hira','insen','hong'];
 const $=id=>document.getElementById(id);
 const st={pos:0};
@@ -91,6 +93,12 @@ $('root').innerHTML=FRS.map((n,i)=>`<option value="${i}">${n} (${SH[i]})</option
 $('root').value='9';
 $('scale').innerHTML=CATS.map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join('')}</optgroup>`).join('');
 $('scale').value='pmin';
+// Reprend la dernière gamme : celle de l'analyse dans Tab → Gamme, ou le dernier choix fait ici
+let FROM_TAB=false;
+try{
+  const m=JSON.parse(localStorage.getItem('gt.scale')||'null'),k=m&&({min:'aeo'}[m.sk]||m.sk);
+  if(m&&SC_KEYS().includes(k)){$('root').value=String(m.r);$('scale').value=k;FROM_TAB=m.src!=='gammes';}
+}catch(e){}
 
 const R=()=>+$('root').value,SK=()=>$('scale').value;
 const names=()=>{const r=R(),fl=[5,10,3,8,1].includes(r)||MINOR.includes(SK())&&[2,7,0,5].includes(r);return $('nom').value==='fr'?(fl?FRF:FRS):(fl?FLT:SH);};
@@ -191,7 +199,11 @@ $('playBtn').onclick=()=>{
   timer.push(setTimeout(stop,(full.length*dt+.4)*1000));
   $('playBtn').textContent='Stop';
 };
-['root','scale','lab','nom'].forEach(id=>$(id).onchange=()=>{if(id==='root'||id==='scale')st.pos=0;render();});
+['root','scale','lab','nom'].forEach(id=>$(id).onchange=()=>{
+  if(id==='root'||id==='scale'){st.pos=0;$('fromtab').hidden=true;
+    try{localStorage.setItem('gt.scale',JSON.stringify({r:R(),sk:SK(),ts:Date.now(),src:'gammes'}));}catch(e){}}
+  render();});
+if(FROM_TAB)$('fromtab').hidden=false;
 render();
 // Bascule horizontal / vertical quand la largeur change (rotation du téléphone, fenêtre)
 const ro=new ResizeObserver(()=>{if(($('neck').clientWidth<560)!==VERT&&!timer)render();});ro.observe($('neck'));
