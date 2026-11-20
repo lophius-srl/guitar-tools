@@ -20,11 +20,13 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
    Le manche a toujours la même hauteur, quelle que soit la mesure. */
 .mgrid{display:flex;justify-content:space-around;align-items:center;gap:16px 32px}
 .mright svg{height:230px!important;width:auto!important;max-width:100%!important}
+.mleft{min-width:240px}
 .mleft .mt{font-size:15px;line-height:1.55;margin:0 0 6px}
 .lbl0{font-size:12px;font-weight:600;color:var(--mut);margin:8px 0 2px}
 @media(max-width:640px){
   .mgrid{flex-direction:column;align-items:stretch}
   .mright svg{width:100%!important;height:auto!important}
+  .mleft{min-width:0}
   .mleft .mt{font-size:14px}
 }
 .lbl{font-size:12px;font-weight:600;color:var(--root);margin:8px 0 2px}
