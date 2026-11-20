@@ -21,6 +21,16 @@ Choisis une tonique et une gamme (modes, pentatoniques, mineures harmonique et m
 - le polygone des intervalles sur la roue des 12 demi-tons, avec le nombre de demi-tons sur chaque côté ;
 - la formule (T, ½, 1½) et l'écoute de la gamme montante puis descendante.
 
+## Analyse (bêta)
+
+Version expérimentale de l'analyse, à côté de Tab → Gamme (qui reste inchangé) :
+
+- tonalité du morceau à partir de plusieurs indices (notes dans la gamme, profils de Krumhansl, rôle des accords I/IV/V, premier et dernier accord) ;
+- sections et modulations (algorithme de Viterbi : un changement de tonalité doit être confirmé sur plusieurs mesures) et couleur de chaque section (mixolydien, dorien, mineur harmonique…) ;
+- accord et degré de chaque mesure, accords empruntés signalés ;
+- positions choisies pour tout le morceau, avec le moins de déplacements possible ;
+- accordage (Drop D, ½ ton ou 1 ton plus bas) et capodastre.
+
 ## Structure
 
 - Site statique, sans build : chaque outil est une page HTML autonome.
