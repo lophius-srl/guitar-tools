@@ -204,7 +204,7 @@ function board(ns,root,iv,lab,names,p){
       g+=`<g opacity="${box?1:.3}"><circle cx="${cx}" cy="${cy}" r="10.5" fill="var(--card)" stroke="${d===0?'var(--root)':'var(--str)'}" stroke-width="${d===0?2:1}"/><text x="${cx}" y="${cy+fs*0.36}" font-size="${fs}" text-anchor="middle" fill="${d===0?'var(--root)':'var(--fg)'}" font-weight="${d===0?700:500}">${main}</text>${sub}</g>`;
     }
   }
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" style="width:${W}px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">${g}</svg>`;
 }
 
 function run(){
