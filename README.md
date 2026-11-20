@@ -29,5 +29,7 @@ Choisis une tonique et une gamme (modes, pentatoniques, mineures harmonique et m
 
 ## Déploiement
 
-Chaque push sur `main` déploie le site sur Cloudflare Workers (fichiers statiques) via GitHub Actions (`.github/workflows/deploy.yml`, config dans `wrangler.jsonc`).
+En ligne via GitHub Pages (branche `main`, mis à jour à chaque push).
+
+Option : déploiement sur Cloudflare Workers (fichiers statiques) via GitHub Actions (`.github/workflows/deploy.yml`, config dans `wrangler.jsonc`).
 Secrets du dépôt nécessaires : `CLOUDFLARE_API_TOKEN` (modèle « Edit Cloudflare Workers ») et `CLOUDFLARE_ACCOUNT_ID`.

@@ -1,8 +1,8 @@
 name: Déploiement Cloudflare
 
+# Désactivé tant que les secrets Cloudflare ne sont pas configurés : lancement manuel uniquement.
+# Pour l'activer : remettre `push: branches: [main]` sous `on:`.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
