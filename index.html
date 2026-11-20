@@ -248,7 +248,7 @@ function run(){
   if(ranked.length>1){
     const top=ranked.slice(0,4);
     $('sugg').innerHTML='Meilleures gammes : '+top.map((c,i)=>`<button data-r="${c.r}" data-s="${c.sk}" class="${i?'':'on'}">${label(c)} · ${Math.round(c.inS/c.n*100)}%</button>`).join('');
-    $('sugg').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('root').value=b.dataset.r;$('scale').value=b.dataset.s;run();});
+    $('sugg').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('root').value=b.dataset.r;$('scale').value=b.dataset.s;saveSettings();run();});
   }
   const gn=namesFor(G.r,G.sk),giv=SCALES[G.sk].i;
   // Partage la gamme trouvée avec l'onglet Gammes (même navigateur)
@@ -448,8 +448,15 @@ document.addEventListener('click',async e=>{
   }catch(err){m.textContent='Export impossible : '+(err&&err.message||err);}
   finally{b.disabled=false;}
 });
-$('go').onclick=run;['root','scale','lab','nom','per','fix'].forEach(id=>$(id).onchange=run);
+// Réglages mémorisés avec le morceau (tonique, gamme, affichage, options)
+const SET_IDS=['root','scale','lab','nom','per','fix'];
+try{const S=JSON.parse(localStorage.getItem('gt.settings')||'{}');
+  SET_IDS.forEach(id=>{if(!(id in S))return;const el=$(id);if(el.type==='checkbox')el.checked=!!S[id];else if([...el.options].some(o=>o.value===S[id]))el.value=S[id];});}catch(e){}
+const saveSettings=()=>{try{const S={};SET_IDS.forEach(id=>{const el=$(id);S[id]=el.type==='checkbox'?el.checked:el.value;});localStorage.setItem('gt.settings',JSON.stringify(S));}catch(e){}};
+$('go').onclick=run;SET_IDS.forEach(id=>$(id).onchange=()=>{saveSettings();run();});
 // Analyse automatique dès qu'on colle ou modifie la tablature, et sauvegarde dans le navigateur
+// Nouveau morceau collé : on repart en détection automatique de la gamme
+$('tab').addEventListener('paste',()=>{$('root').value='auto';$('scale').value='auto';saveSettings();});
 let TT=null;$('tab').addEventListener('input',()=>{
   try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}
   clearTimeout(TT);TT=setTimeout(run,400);
