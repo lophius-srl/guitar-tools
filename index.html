@@ -3,83 +3,59 @@
 <title>Tab → Gamme · Guitar tools</title>
 <meta name="description" content="Colle une tablature de guitare : pour chaque mesure, la gamme sur le manche, la position de la main et l'ordre des notes. Export PDF.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=3">
 <style>
-:root{--bg:#faf8f4;--fg:#1d1b18;--mut:#8a847a;--line:#d8d2c6;--acc:#c2552d;--root:#2d6a8f;--card:#fff;--out:#b3261e;--str:#9c958a}
-@media(prefers-color-scheme:dark){:root{--bg:#171614;--fg:#eee9e0;--mut:#8f887d;--line:#3a3631;--acc:#e07a4f;--root:#6fb0d6;--card:#201e1b;--out:#ef6b62;--str:#6b655c}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,sans-serif}
-main{max-width:860px;margin:auto;padding:20px 14px 60px}
-h1{font-size:22px;margin:0 0 4px}
-.sub{color:var(--mut);margin:0 0 14px}
-textarea{width:100%;min-height:150px;font:13px/1.3 ui-monospace,Menlo,monospace;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow-x:auto}
-.ctl{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;align-items:center}
-label{font-size:14px;color:var(--mut)}
-select,button{font:inherit;color:var(--fg);padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
-button.pri{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
-.info{font-size:14px;margin:4px 0 8px}
-.legend{font-size:13px;color:var(--mut);display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
-.dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
-.m{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}
-.m h2{font-size:15px;margin:0 0 6px}
-.seq{font-size:13px;margin-top:8px;line-height:1.7}
+/* Spécifique à Tab → Gamme */
+textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line2);border-radius:8px;padding:10px;white-space:pre;overflow-x:auto;margin:0 0 12px}
+.seq{font-size:13px;margin-top:10px;line-height:1.7}
 .seq span{display:inline-block;margin-right:10px;white-space:nowrap}
 .seq i{font-style:normal;color:var(--mut)}
-.out{color:var(--out)}
+.out,.err{color:var(--out)}
 .wrap{overflow-x:auto}
-svg{display:block;max-width:100%;height:auto}
-.err{color:var(--out)}
-.sugg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px;align-items:center;font-size:13px;color:var(--mut)}
-.sugg button{font-size:13px;padding:5px 9px}
-.sugg button.on{border-color:var(--acc);color:var(--acc);font-weight:600}
-.m h2 small{font-weight:400;color:var(--mut);font-size:13px}
-.m h2 .chg{color:var(--acc)}
-.pos{display:inline-block;font-size:13px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent);border-radius:6px;padding:2px 8px;margin-bottom:6px}
+.card h2 .chg{color:var(--acc)}
+.pos{display:inline-block;font-size:13px;font-weight:600;color:var(--acc);background:var(--accL);border-radius:6px;padding:2px 8px;margin-bottom:6px}
 .expl{font-size:13px;margin-top:8px;line-height:1.5}
 .lbl{font-size:12px;font-weight:600;color:var(--root);margin-bottom:2px}
+.mt{font:12px/1.25 ui-monospace,Menlo,monospace;color:var(--mut);margin:0 0 8px;overflow-x:auto}
 .mt.fx{color:var(--fg);border-left:3px solid var(--root);padding-left:8px}
 .mv{color:var(--root)}
-.mt{font:12px/1.25 ui-monospace,Menlo,monospace;color:var(--mut);margin:0 0 8px;overflow-x:auto}
-.strip{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
-.strip div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 9px;text-align:center;min-width:46px}
-.strip b{display:block;font-size:16px}
-.strip small{color:var(--mut);font-size:12px}
-.strip .r{border-color:var(--root);border-width:2px}.strip .r b{color:var(--root)}
-nav.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:0 0 18px}
-nav.tabs a{flex:none;padding:10px 14px;color:var(--mut);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;margin-bottom:-1px}
-nav.tabs a[aria-current]{color:var(--fg);border-color:var(--acc)}
-.brand{font-size:13px;color:var(--mut);margin:0 0 4px;letter-spacing:.02em}
-footer{color:var(--mut);font-size:12px;margin-top:30px}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--mut);margin:0 0 10px}
+.sugg:empty{display:none}
+.sugg button{font-size:14px;padding:6px 12px;min-height:36px}
+.sugg button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
 </style></head><body><main>
 <p class="brand">Guitar tools</p>
 <nav class="tabs" id="tabs"></nav>
 <h1>Tab → Gamme</h1>
-<p class="sub">Colle une tablature ASCII (6 cordes, mesures séparées par <code>|</code>). Pour chaque mesure : le schéma de la gamme sur le manche, et l'ordre des notes à jouer.</p>
-<textarea id="tab" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
-<div class="ctl">
-  <label>Tonique <select id="root"></select></label>
-  <label>Gamme <select id="scale"></select></label>
-  <label>Points <select id="lab"><option value="both">notes + degrés</option><option value="name">notes</option><option value="deg">degrés</option></select></label>
-  <label>Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
-  <label><input type="checkbox" id="per" checked> Gamme par mesure</label>
-  <label><input type="checkbox" id="fix" checked> Corriger les doigtés</label>
-  <button class="pri" id="go">Analyser</button>
+<p class="sub">Colle une tablature : pour chaque mesure, la gamme sur le manche, la position de la main et l'ordre des notes à jouer.</p>
+<div class="panel">
+  <textarea id="tab" spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Tablature"></textarea>
+  <div class="fields">
+    <label class="field">Tonique <select id="root"></select></label>
+    <label class="field">Gamme <select id="scale"></select></label>
+    <label class="field">Points <select id="lab"><option value="both">notes + degrés</option><option value="name">notes</option><option value="deg">degrés</option></select></label>
+    <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+    <label class="check"><input type="checkbox" id="per" checked> Gamme par mesure</label>
+    <label class="check"><input type="checkbox" id="fix" checked> Corriger les doigtés</label>
+    <button class="pri grow" id="go">Analyser</button>
+  </div>
 </div>
 <div class="info" id="info"></div>
 <div class="sugg" id="sugg"></div>
 <div class="strip" id="strip"></div>
 <div class="legend">
-  <span><span class="dot" style="background:var(--acc)"></span>note jouée (n° = ordre)</span>
-  <span><span class="dot" style="border:1.5px solid var(--str)"></span>note de la gamme</span>
-  <span><span class="dot" style="border:2px solid var(--root)"></span>tonique</span>
-  <span><span class="dot" style="background:var(--out)"></span>hors gamme</span>
-  <span><span class="dot" style="background:color-mix(in srgb,var(--acc) 15%,transparent);border:1.5px solid var(--acc);border-radius:3px"></span>position de la main</span>
-  <span><span class="dot" style="border:1.5px dashed var(--acc)"></span>hors position</span>
+  <span><span class="dot play"></span>note jouée (n° = ordre)</span>
+  <span><span class="dot scale"></span>note de la gamme</span>
+  <span><span class="dot root"></span>tonique</span>
+  <span><span class="dot outs"></span>hors gamme</span>
+  <span><span class="dot box"></span>position de la main</span>
+  <span><span class="dot offp"></span>hors position</span>
 </div>
 <div id="out"></div>
 <div id="full"></div>
-<footer>Fait par <a href="https://www.lophius.be" style="color:inherit">Lophius</a>. Tout se calcule dans ton navigateur : rien n'est envoyé.</footer>
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=2"></script>
+<script src="assets/nav.js?v=3"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -209,8 +185,8 @@ function board(ns,root,iv,lab,names,p){
   const x=f=>f===0?left-18:left+(f-first+0.5)*fw,y=s=>top+s*sh;
   let g='';
   {const x0=p===1?(lo===0?left-34:left):x(p)-fw/2,x1=x(p+3)+fw/2;
-   g+=`<rect x="${x0}" y="${top-14}" width="${x1-x0}" height="${5*sh+28}" rx="10" fill="var(--acc)" fill-opacity=".1" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
-  for(let k=0;k<=nCols;k++){const xx=left+k*fw;g+=`<line x1="${xx}" y1="${top}" x2="${xx}" y2="${y(5)}" stroke="var(--line)" stroke-width="${k===0&&first===1?5:1.5}"/>`;}
+   g+=`<rect x="${x0}" y="${top-14}" width="${x1-x0}" height="${5*sh+28}" rx="10" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
+  for(let k=0;k<=nCols;k++){const xx=left+k*fw;g+=`<line x1="${xx}" y1="${top}" x2="${xx}" y2="${y(5)}" stroke="var(--line2)" stroke-width="${k===0&&first===1?5:1.5}"/>`;}
   for(let f=first;f<=hi;f++){if([3,5,7,9,12,15,17,19,21].includes(f))g+=`<text x="${x(f)}" y="${H-6}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}">${f}</text>`;}
   for(let s=0;s<6;s++){g+=`<line x1="${left}" y1="${y(s)}" x2="${W-8}" y2="${y(s)}" stroke="var(--str)" stroke-width="${0.8+s*0.3}"/><text x="${lo===0?6:4}" y="${y(s)+4}" font-size="11" fill="var(--mut)">${SN[s]}</text>`;}
   const played={};ns.forEach(n=>{const k=n.s+'-'+n.f;(played[k]=played[k]||{n,o:[]}).o.push(n.o);});
@@ -247,12 +223,12 @@ function run(){
     $('sugg').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('root').value=b.dataset.r;$('scale').value=b.dataset.s;run();});
   }
   const gn=namesFor(G.r,G.sk),giv=SCALES[G.sk].i;
-  $('strip').innerHTML=giv.map(i=>`<div class="${i?'':'r'}"><b>${gn[(G.r+i)%12]}</b><small>${IV[i]}</small></div>`).join('');
+  $('strip').innerHTML=giv.map(i=>`<div class="n ${i?'':'r'}"><b>${gn[(G.r+i)%12]}</b><small>${IV[i]}</small></div>`).join('');
   info.innerHTML=`Gamme principale : <b>${label(G)}</b> — ${G.inS}/${G.n} notes dans la gamme`+(per?'. Chaque mesure peut prendre sa propre gamme si une autre colle mieux.':'');
   const fixed=[];REP={title:label(G),cov:`${G.inS}/${G.n}`,scale:giv.map(i=>gn[(G.r+i)%12]+' ('+IV[i]+')').join('  '),ms:[]};
   ms.forEach(({notes:ns,raw},i)=>{
     const tab=`<pre class="mt">${raw.map((r,s)=>SN[s]+'|'+r.replace(/</g,'&lt;')+'|').join('\n')}</pre>`;
-    if(!ns.length){fixed.push(raw);REP.ms.push({h:`Mesure ${i+1}`,raw,silence:true});out.insertAdjacentHTML('beforeend',`<div class="m"><h2>Mesure ${i+1}</h2>${tab}<div class="seq"><i>Pas de note (silence)</i></div></div>`);return;}
+    if(!ns.length){fixed.push(raw);REP.ms.push({h:`Mesure ${i+1}`,raw,silence:true});out.insertAdjacentHTML('beforeend',`<div class="card"><h2>Mesure ${i+1}</h2>${tab}<div class="seq"><i>Pas de note (silence)</i></div></div>`);return;}
     let C=G;
     if(per){
       // On garde la tonique principale si une de ses gammes couvre ≥ 75 % de la mesure
@@ -282,7 +258,7 @@ function run(){
     const head=`Mesure ${i+1} — <span class="${chg?'chg':''}">${label(C)}</span> <small>${C.inS}/${C.n} · ${iv.map(x=>names[(root+x)%12]).join(' ')}</small>`;
     const svg=board(ns,root,iv,lab,names,p),strip=h=>h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<');
     REP.ms.push({h:`Mesure ${i+1}`,sc:label(C),chg,cov:`${C.inS}/${C.n}`,notes:iv.map(x=>names[(root+x)%12]).join(' '),model:{ns:ns.map(n=>({s:n.s,f:n.f,o:n.o,pc:n.pc})),root,iv,names,p},raw,seg:moved.length?seg:null,pos,svg,seq:[...seq.matchAll(/<span><b>(\d+)<\/b> (.*?)<\/span>(?=<span><b>|$)/g)].map(m=>m[1]+'. '+strip(m[2])).join('   '),expl:expl.map(strip)});
-    out.insertAdjacentHTML('beforeend',`<div class="m"><h2>${head}</h2>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}<div class="pos">${pos}</div><div class="wrap">${svg}</div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
+    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}</h2>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}<div class="pos">${pos}</div><div class="wrap">${svg}</div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
   });
   // Tablature complète avec doigtés corrigés, 4 mesures par ligne
   const rowsTxt=[];
@@ -291,7 +267,7 @@ function run(){
     rowsTxt.push(SN.map((n,s)=>n+'|'+ch.map(m=>m[s]).join('|')+'|').join('\n'));
   }
   const full=rowsTxt.join('\n\n');REP.full=full;
-  $('full').innerHTML=`<div class="m"><h2>Tablature avec doigtés corrigés</h2><pre class="mt fx">${full.replace(/</g,'&lt;')}</pre><div class="ctl" style="margin:0"><button id="cp">Copier</button><button id="use">Mettre dans l'éditeur</button><button id="pdf" class="pri">Exporter en PDF</button><span id="cpm" class="info" style="margin:0"></span></div></div>`;
+  $('full').innerHTML=`<div class="card"><h2>Tablature avec doigtés corrigés</h2><pre class="mt fx">${full.replace(/</g,'&lt;')}</pre><div class="fields" style="margin-top:10px"><button id="cp">Copier</button><button id="use">Mettre dans l'éditeur</button><button id="pdf" class="pri">Exporter en PDF</button><span id="cpm" class="info" style="margin:0"></span></div></div>`;
   $('cp').onclick=async()=>{try{await navigator.clipboard.writeText(full);$('cpm').textContent='Copié';}catch(e){$('cpm').textContent='Copie refusée : sélectionne le texte à la main';}};
   $('use').onclick=()=>{$('tab').value=full;run();window.scrollTo({top:0,behavior:'smooth'});};
 }

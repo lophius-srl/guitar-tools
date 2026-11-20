@@ -1,0 +1,75 @@
+/* Guitar tools — styles communs à tous les onglets.
+   Couleurs : orange = note jouée / position de la main, bleu = tonique, rouge = hors gamme. */
+:root{
+  --bg:#faf8f4;--fg:#1d1b18;--mut:#8a847a;--line:#e2ddd3;--line2:#d0c9bc;
+  --acc:#c2552d;--accL:#f7e6dd;--root:#2d6a8f;--rootL:#e4eef5;
+  --card:#ffffff;--out:#b3261e;--str:#9c958a;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#161513;--fg:#eee9e0;--mut:#948d82;--line:#2f2c28;--line2:#3d3934;
+  --acc:#e07a4f;--accL:#3a2419;--root:#6fb0d6;--rootL:#1b2b36;
+  --card:#1f1d1a;--out:#ef6b62;--str:#6b655c;
+}}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:clip}
+main{max-width:960px;margin:auto;padding:18px 16px 60px}
+a{color:inherit}
+
+/* En-tête commun */
+.brand{font-size:13px;font-weight:600;color:var(--mut);margin:0 0 2px}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line2);margin:0 0 20px}
+nav.tabs a{flex:none;padding:10px 14px;color:var(--mut);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;margin-bottom:-1px}
+nav.tabs a[aria-current]{color:var(--fg);border-color:var(--acc)}
+h1{font-size:26px;line-height:1.1;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 16px;max-width:62ch}
+
+/* Panneau de réglages */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 14px}
+.fields{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--mut)}
+.check{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--fg);min-height:40px}
+.check input{width:18px;height:18px;accent-color:var(--acc)}
+select,button,textarea{font:inherit;color:var(--fg)}
+select,button{font-size:15px;padding:8px 12px;min-height:40px;border-radius:8px;border:1px solid var(--line2);background:var(--card);cursor:pointer}
+select:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.grow{margin-left:auto}
+
+/* Contrôle segmenté (positions, suggestions) */
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font-size:14px;padding:6px 12px;min-height:36px}
+.seg button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+
+/* Bande des notes de la gamme */
+.strip{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px}
+.strip .n{background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:5px 9px;text-align:center;min-width:48px}
+.strip .n b{display:block;font-size:16px;line-height:1.2}
+.strip .n small{color:var(--mut);font-size:12px}
+.strip .n.r{border:2px solid var(--root)}.strip .n.r b{color:var(--root)}
+.strip .n.hot{background:var(--acc);border-color:var(--acc)}.strip .n.hot b,.strip .n.hot small{color:#fff}
+.strip .st{font-size:11px;color:var(--mut);margin:0 -2px}
+
+/* Légende */
+.legend{font-size:13px;color:var(--mut);display:flex;gap:6px 14px;flex-wrap:wrap;margin:0 0 6px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:5px}
+.dot.play{background:var(--acc)}
+.dot.scale{background:var(--card);border:1.5px solid var(--str)}
+.dot.root{background:var(--card);border:2px solid var(--root)}
+.dot.outs{background:var(--out)}
+.dot.box{background:var(--accL);border:1.5px solid var(--acc);border-radius:3px}
+.dot.offp{border:1.5px dashed var(--acc)}
+
+/* Cartes */
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0}
+.card h2{font-size:16px;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.card h2 small{font-weight:400;color:var(--mut);font-size:13px}
+.scroll{overflow-x:auto}
+svg{display:block}
+.muted{color:var(--mut)}
+.info{font-size:14px;margin:0 0 10px}
+
+/* Manche : note en cours d'écoute */
+g.hot circle.dot{fill:var(--acc)!important;stroke:var(--acc)!important}
+g.hot text{fill:#fff!important;font-weight:700}
+
+footer{color:var(--mut);font-size:12px;margin-top:32px;padding-top:14px;border-top:1px solid var(--line)}

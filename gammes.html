@@ -1,98 +1,53 @@
 <!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gammes · Guitar tools</title>
-<meta name="description" content="Visualise une gamme sur le manche de guitare, position par position, et ses intervalles sous forme de polygone à 12 côtés. Écoute la gamme.">
+<meta name="description" content="Visualise une gamme sur le manche de guitare, position par position, et ses intervalles sur la roue des 12 demi-tons. Écoute la gamme.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=3">
 <style>
-/* VOICE: carnet d'atelier de guitariste, calme et précis
-   IDEA: la page d'un cahier de gammes : manche, position, roue des 12 demi-tons
-   PICTURE: le manche complet, puis la position en grand à côté du polygone des intervalles
-   COLOUR/TYPE: même palette que Tab → Gamme (orange brûlé = notes jouées, bleu = tonique), system-ui
-   LAYOUT: contrôles, manche pleine largeur, puis position + polygone côte à côte (empilés sur mobile) */
-:root{--bg:#faf8f4;--fg:#1d1b18;--mut:#8a847a;--line:#d8d2c6;--acc:#c2552d;--accL:#f6e2d8;--root:#2d6a8f;--rootL:#e3eef5;--card:#fff;--out:#b3261e;--str:#9c958a}
-@media(prefers-color-scheme:dark){:root{--bg:#171614;--fg:#eee9e0;--mut:#8f887d;--line:#3a3631;--acc:#e07a4f;--accL:#3b2419;--root:#6fb0d6;--rootL:#1c2d38;--card:#201e1b;--out:#ef6b62;--str:#6b655c}}
-*{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,sans-serif;overflow-x:clip}
-main{max-width:1100px;margin:auto;padding:20px 14px 60px}
-.brand{font-size:13px;color:var(--mut);margin:0 0 4px}
-nav.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:0 0 18px}
-nav.tabs a{flex:none;padding:10px 14px;color:var(--mut);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;margin-bottom:-1px}
-nav.tabs a[aria-current]{color:var(--fg);border-color:var(--acc)}
-h1{font-size:22px;margin:0 0 4px}
-.sub{color:var(--mut);margin:0 0 14px}
-.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 10px}
-label{font-size:14px;color:var(--mut)}
-select,button{font:inherit;color:var(--fg);padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);min-height:40px}
-button{cursor:pointer}
-button:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
-.pills button{font-size:14px;padding:6px 11px;min-height:36px}
-.pills button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-.cat{font-size:12px;color:var(--mut);margin:10px 0 4px}
-.strip{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin:14px 0 10px}
-.strip .n{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 9px;text-align:center;min-width:48px}
-.strip .n b{display:block;font-size:16px}.strip .n small{color:var(--mut);font-size:12px}
-.strip .n.r{border:2px solid var(--root)}.strip .n.r b{color:var(--root)}
-.strip .st{font-size:12px;color:var(--acc);font-weight:600;padding:0 5px}
-.strip .n.hot{background:var(--acc);border-color:var(--acc)}.strip .n.hot b,.strip .n.hot small{color:#fff}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}
-.card h2{font-size:15px;margin:0 0 8px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between}
-.card h2 small{font-weight:400;color:var(--mut);font-size:13px}
-.scroll{overflow-x:auto}
-svg{display:block}
-.duo{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px}
-@media(max-width:760px){.duo{grid-template-columns:minmax(0,1fr)}}
-.duo .card{margin:0}
-.poly svg{width:100%;max-width:360px;height:auto;margin:auto}
-.info{font-size:13px;color:var(--mut);margin-top:8px;line-height:1.5}
-.play{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.play button.pri{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
-g.hot circle.dot{fill:var(--acc)!important;stroke:var(--acc)!important}
-g.hot text{fill:#fff!important;font-weight:700}
-circle.pv.hot{fill:var(--acc);r:9}
-footer{color:var(--mut);font-size:12px;margin-top:30px}
-@media(prefers-reduced-motion:no-preference){g.dotg circle.dot{transition:fill .12s}}
+.duo{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px;align-items:center}
+@media(max-width:640px){.duo{grid-template-columns:minmax(0,1fr)}}
+.poly svg{width:100%;max-width:340px;height:auto;margin:auto}
+.formula{font-size:20px;font-weight:700;letter-spacing:.04em;margin:2px 0 6px}
 </style></head><body><main>
 <p class="brand">Guitar tools</p>
 <nav class="tabs" id="tabs"></nav>
 <h1>Gammes</h1>
-<p class="sub">Choisis une tonique et une gamme : le manche complet, chaque position en grand, et les intervalles dessinés sur la roue des 12 demi-tons.</p>
+<p class="sub">Choisis une gamme : ses notes sur le manche, position par position, et la forme de ses intervalles.</p>
 
-<div class="ctl">
-  <label>Tonique <select id="root"></select></label>
-  <label>Points <select id="lab"><option value="name">notes</option><option value="deg">degrés</option></select></label>
-  <label>Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
-  <label><input type="checkbox" id="all"> Afficher les autres notes</label>
+<div class="panel">
+  <div class="fields">
+    <label class="field">Tonique <select id="root"></select></label>
+    <label class="field">Gamme <select id="scale"></select></label>
+    <label class="field">Points <select id="lab"><option value="name">notes</option><option value="deg">degrés</option></select></label>
+    <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+  </div>
 </div>
-<div id="scales"></div>
+
 <div class="strip" id="strip"></div>
 
 <div class="card">
-  <h2><span id="title"></span><small>Touche une position pour la voir en grand</small></h2>
-  <div class="pills" id="pos"></div>
+  <h2><span id="title"></span><small id="prange"></small></h2>
+  <div class="seg" id="pos" style="margin-bottom:10px"></div>
   <div class="scroll" id="neck"></div>
 </div>
 
-<div class="duo">
-  <div class="card">
-    <h2><span id="ptitle">Position</span><small id="prange"></small></h2>
-    <div class="scroll" id="zoom"></div>
-    <div class="play" style="margin-top:10px">
+<div class="card">
+  <h2>Intervalles <small>la gamme sur la roue des 12 demi-tons</small></h2>
+  <div class="duo">
+    <div class="poly" id="poly"></div>
+    <div>
+      <div class="muted" style="font-size:13px">Formule (T = ton, ½ = demi-ton)</div>
+      <div class="formula" id="formula"></div>
+      <p class="muted" style="font-size:14px;margin:0 0 14px">Chaque chiffre sur la forme = le nombre de demi-tons entre deux notes voisines.</p>
       <button class="pri" id="playBtn">Écouter la gamme</button>
-      <button id="stopBtn">Stop</button>
-      <label>Tempo <select id="tempo"><option value="0.55">lent</option><option value="0.36" selected>moyen</option><option value="0.22">rapide</option></select></label>
     </div>
-  </div>
-  <div class="card poly">
-    <h2>Intervalles <small>roue des 12 demi-tons</small></h2>
-    <div id="poly"></div>
-    <div class="info" id="formula"></div>
   </div>
 </div>
 
-<footer>Fait par <a href="https://www.lophius.be" style="color:inherit">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=2"></script>
+<script src="assets/nav.js?v=3"></script>
 <script>
 {
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -102,135 +57,124 @@ const FRF=['Do','Réb','Ré','Mib','Mi','Fa','Solb','Sol','Lab','La','Sib','Si']
 const IV=['1','b2','2','b3','3','4','b5','5','b6','6','b7','7'];
 const OPEN=[64,59,55,50,45,40],SN=['e','B','G','D','A','E'];
 const CATS=[
- ['Occidentales',[
+ ['Courantes',[
+  ['maj','Majeure',[0,2,4,5,7,9,11]],
+  ['aeo','Mineure naturelle',[0,2,3,5,7,8,10]],
   ['pmaj','Penta majeure',[0,2,4,7,9]],
-  ['maj','Majeure (ionien)',[0,2,4,5,7,9,11]],
+  ['pmin','Penta mineure',[0,3,5,7,10]],
+  ['blues','Blues',[0,3,5,6,7,10]],
+  ['harm','Mineure harmonique',[0,2,3,5,7,8,11]],
+  ['melo','Mineure mélodique',[0,2,3,5,7,9,11]]]],
+ ['Modes',[
   ['dor','Dorien',[0,2,3,5,7,9,10]],
   ['phr','Phrygien',[0,1,3,5,7,8,10]],
   ['lyd','Lydien',[0,2,4,6,7,9,11]],
   ['mix','Mixolydien',[0,2,4,5,7,9,10]],
-  ['aeo','Mineure naturelle (éolien)',[0,2,3,5,7,8,10]],
-  ['loc','Locrien',[0,1,3,5,6,8,10]],
-  ['pmin','Penta mineure',[0,3,5,7,10]],
-  ['harm','Mineure harmonique',[0,2,3,5,7,8,11]],
-  ['melo','Mineure mélodique',[0,2,3,5,7,9,11]],
-  ['blues','Blues',[0,3,5,6,7,10]],
-  ['neut','Penta neutre (suspendue)',[0,2,5,7,10]]]],
+  ['loc','Locrien',[0,1,3,5,6,8,10]]]],
  ['Autres',[
+  ['neut','Penta neutre (suspendue)',[0,2,5,7,10]],
   ['pdom','Phrygien dominant',[0,1,4,5,7,8,10]],
   ['hong','Mineure hongroise',[0,2,3,6,7,8,11]],
   ['dharm','Double harmonique',[0,1,4,5,7,8,11]],
   ['ton','Tons entiers',[0,2,4,6,8,10]],
-  ['dim','Diminuée (ton/demi-ton)',[0,2,3,5,6,8,9,11]],
+  ['dim','Diminuée',[0,2,3,5,6,8,9,11]],
   ['hira','Hirajoshi',[0,2,3,7,8]],
   ['insen','In-sen',[0,1,5,7,10]]]]
 ];
 const SC={};CATS.forEach(c=>c[1].forEach(([k,n,i])=>SC[k]={n,i}));
 const MINOR=['dor','phr','aeo','loc','pmin','harm','melo','blues','hira','insen','hong'];
 const $=id=>document.getElementById(id);
-const st={root:0,sk:'pmaj',pos:0};
+const st={pos:0};
 let ctx=null,timer=null;
 
 $('root').innerHTML=FRS.map((n,i)=>`<option value="${i}">${n} (${SH[i]})</option>`).join('');
-$('scales').innerHTML=CATS.map(([c,l])=>`<div class="cat">${c}</div><div class="pills">${l.map(([k,n])=>`<button data-k="${k}">${n}</button>`).join('')}</div>`).join('');
-$('scales').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.sk=b.dataset.k;st.pos=0;render();});
+$('root').value='9';
+$('scale').innerHTML=CATS.map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join('')}</optgroup>`).join('');
+$('scale').value='pmin';
 
-const names=()=>{const fl=[5,10,3,8,1].includes(st.root)||MINOR.includes(st.sk)&&[2,7,0,5].includes(st.root);return $('nom').value==='fr'?(fl?FRF:FRS):(fl?FLT:SH);};
+const R=()=>+$('root').value,SK=()=>$('scale').value;
+const names=()=>{const r=R(),fl=[5,10,3,8,1].includes(r)||MINOR.includes(SK())&&[2,7,0,5].includes(r);return $('nom').value==='fr'?(fl?FRF:FRS):(fl?FLT:SH);};
 const stepTxt=n=>({1:'½',2:'T',3:'1½',4:'2T'})[n]||n;
 
-// Positions : une par note de la gamme sur la corde de Mi grave, fenêtre de 5 cases
-function positions(iv){
-  const fr=iv.map(i=>((st.root+i)%12-4+12)%12).sort((a,b)=>a-b);
-  return fr.map(f=>({lo:f,hi:f+4}));
-}
+// Une position par note de la gamme sur la corde de Mi grave, sur 5 cases
+const positions=iv=>iv.map(i=>((R()+i)%12-4+12)%12).sort((a,b)=>a-b).map(f=>({lo:f,hi:f+4}));
 
-function neck(lo,hi,opt){
-  const iv=SC[st.sk].i,nm=names(),deg=$('lab').value==='deg',all=$('all').checked;
-  const first=Math.max(lo,1),fw=opt.fw,sh=opt.sh,openW=lo===0?34:0,left=26+openW,top=14,nCols=hi-first+1;
-  const W=left+nCols*fw+10,H=top+5*sh+30,r=opt.r;
+// Manche : même dessin que dans Tab → Gamme
+function neck(lo,hi,box){
+  const nm=names(),deg=$('lab').value==='deg',root=R(),iv=SC[SK()].i;
+  const first=Math.max(lo,1),fw=50,sh=30,r=10.5,openW=lo===0?36:0,left=24+openW,top=16,nCols=hi-first+1;
+  const W=left+nCols*fw+8,H=top+5*sh+28;
   const x=f=>f===0?left-openW/2-2:left+(f-first+0.5)*fw,y=s=>top+s*sh;
+  const inBox=f=>!box||f>=box.lo&&f<=box.hi;
   let g='';
-  if(opt.box){const b=opt.box,x0=b.lo===0&&lo===0?left-openW:x(Math.max(b.lo,first))-fw/2,x1=x(b.hi)+fw/2;
-    g+=`<rect x="${x0}" y="${top-sh/2}" width="${x1-x0}" height="${5*sh+sh}" rx="9" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".6" stroke-width="1.5"/>`;}
-  for(let k=0;k<=nCols;k++){const xx=left+k*fw;g+=`<line x1="${xx}" y1="${top}" x2="${xx}" y2="${y(5)}" stroke="var(--line)" stroke-width="${k===0&&first===1?5:1.5}"/>`;}
-  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f))g+=`<text x="${x(f)}" y="${H-8}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}" font-weight="${f===12?700:400}">${f}</text>`;
+  if(box){const x0=box.lo===0?left-openW:x(box.lo)-fw/2,x1=x(box.hi)+fw/2;
+    g+=`<rect x="${x0}" y="${top-14}" width="${x1-x0}" height="${5*sh+28}" rx="10" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
+  for(let k=0;k<=nCols;k++){const xx=left+k*fw;g+=`<line x1="${xx}" y1="${top}" x2="${xx}" y2="${y(5)}" stroke="var(--line2)" stroke-width="${k===0&&first===1?5:1.5}"/>`;}
+  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f))g+=`<text x="${x(f)}" y="${H-6}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}">${f}</text>`;
   for(let s=0;s<6;s++)g+=`<line x1="${left}" y1="${y(s)}" x2="${left+nCols*fw}" y2="${y(s)}" stroke="var(--str)" stroke-width="${0.8+s*0.3}"/><text x="4" y="${y(s)+4}" font-size="11" fill="var(--mut)">${SN[s]}</text>`;
   for(let s=0;s<6;s++)for(let f=lo;f<=hi;f++){
-    const pc=(OPEN[s]+f)%12,d=(pc-st.root+12)%12,inS=iv.includes(d),cx=x(f),cy=y(s);
-    const inBox=!opt.box||(f>=opt.box.lo&&f<=opt.box.hi)||(opt.box.lo===0&&f===0);
-    if(inS){
-      const t=deg?IV[d]:nm[pc],fs=t.length>3?r*.62:t.length>2?r*.72:r*.85,isR=d===0;
-      g+=`<g class="dotg" data-pc="${pc}" opacity="${opt.box&&!inBox?.32:1}"><circle class="dot" cx="${cx}" cy="${cy}" r="${r}" fill="${isR?'var(--root)':'var(--card)'}" stroke="${isR?'var(--root)':'var(--str)'}" stroke-width="1.2"/><text x="${cx}" y="${cy+fs*.36}" font-size="${fs}" text-anchor="middle" fill="${isR?'#fff':'var(--fg)'}" font-weight="${isR?700:500}">${t}</text></g>`;
-    }else if(all){
-      g+=`<text x="${cx}" y="${cy+4}" font-size="${r*.75}" text-anchor="middle" fill="var(--mut)" opacity=".55">${deg?IV[d]:nm[pc]}</text>`;
-    }
+    const pc=(OPEN[s]+f)%12,d=(pc-root+12)%12;if(!iv.includes(d))continue;
+    const t=deg?IV[d]:nm[pc],fs=t.length>3?7.5:t.length>2?8.5:9.5,isR=d===0,cx=x(f),cy=y(s);
+    g+=`<g class="dotg" data-pc="${pc}" opacity="${inBox(f)?1:.3}"><circle class="dot" cx="${cx}" cy="${cy}" r="${r}" fill="var(--card)" stroke="${isR?'var(--root)':'var(--str)'}" stroke-width="${isR?2:1}"/><text x="${cx}" y="${cy+fs*.36}" font-size="${fs}" text-anchor="middle" fill="${isR?'var(--root)':'var(--fg)'}" font-weight="${isR?700:500}">${t}</text></g>`;
   }
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="system-ui,sans-serif">${g}</svg>`;
 }
 
+// Roue des 12 demi-tons : tonique en haut
 function poly(){
-  const iv=SC[st.sk].i,nm=names(),S=340,c=S/2,R=118;
+  const iv=SC[SK()].i,nm=names(),root=R(),S=320,c=S/2,Rd=112;
   const pt=(k,rr)=>{const a=(-90+k*30)*Math.PI/180;return [c+rr*Math.cos(a),c+rr*Math.sin(a)];};
-  let g=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="var(--line)" stroke-dasharray="2 4"/>`;
-  const ring=[];for(let k=0;k<12;k++){const [px,py]=pt(k,R);ring.push(`${px},${py}`);}
-  g+=`<polygon points="${ring.join(' ')}" fill="var(--bg)" stroke="var(--line)"/>`;
-  const P=iv.map(k=>pt(k,R));
-  g+=`<polygon points="${P.map(p=>p.join(',')).join(' ')}" fill="var(--acc)" fill-opacity=".18" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>`;
-  // nombre de demi-tons sur chaque côté
-  iv.forEach((k,i)=>{const k2=i+1<iv.length?iv[i+1]:12,[ax,ay]=pt(k,R),[bx,by]=pt(k2%12,R),mx=(ax+bx)/2,my=(ay+by)/2,dx=mx-c,dy=my-c,L=Math.hypot(dx,dy)||1;
-    g+=`<text x="${c+dx/L*(L-16)}" y="${c+dy/L*(L-16)+4}" font-size="12" font-weight="700" text-anchor="middle" fill="var(--acc)">${k2-k}</text>`;});
+  let g=`<circle cx="${c}" cy="${c}" r="${Rd}" fill="none" stroke="var(--line2)"/>`;
+  g+=`<polygon points="${iv.map(k=>pt(k,Rd).join(',')).join(' ')}" fill="var(--accL)" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  iv.forEach((k,i)=>{const k2=i+1<iv.length?iv[i+1]:12,[ax,ay]=pt(k,Rd),[bx,by]=pt(k2%12,Rd),mx=(ax+bx)/2,my=(ay+by)/2,dx=mx-c,dy=my-c,L=Math.hypot(dx,dy)||1;
+    g+=`<text x="${c+dx/L*(L-15)}" y="${c+dy/L*(L-15)+4}" font-size="12" font-weight="700" text-anchor="middle" fill="var(--acc)">${k2-k}</text>`;});
   for(let k=0;k<12;k++){
-    const [px,py]=pt(k,R),[lx,ly]=pt(k,R+24),inS=iv.includes(k),pc=(st.root+k)%12;
-    g+=`<g class="dotg" data-pc="${pc}"><circle class="dot pv" cx="${px}" cy="${py}" r="${inS?7:3}" fill="${k===0?'var(--root)':inS?'var(--acc)':'var(--line)'}" stroke="${k===0?'var(--root)':'none'}"/>
-      <text x="${lx}" y="${ly-1}" font-size="${inS?13:11}" text-anchor="middle" fill="${k===0?'var(--root)':inS?'var(--fg)':'var(--mut)'}" font-weight="${inS?700:400}">${nm[pc]}</text>
-      <text x="${lx}" y="${ly+11}" font-size="9.5" text-anchor="middle" fill="var(--mut)">${IV[k]}</text></g>`;
+    const [px,py]=pt(k,Rd),[lx,ly]=pt(k,Rd+22),inS=iv.includes(k),pc=(root+k)%12,isR=k===0;
+    g+=inS?`<g class="dotg" data-pc="${pc}"><circle class="dot" cx="${px}" cy="${py}" r="7" fill="var(--card)" stroke="${isR?'var(--root)':'var(--str)'}" stroke-width="${isR?2.5:1.5}"/></g>`
+          :`<circle cx="${px}" cy="${py}" r="2.5" fill="var(--line2)"/>`;
+    g+=`<text x="${lx}" y="${ly+4}" font-size="${inS?13:11}" text-anchor="middle" fill="${isR?'var(--root)':inS?'var(--fg)':'var(--mut)'}" font-weight="${inS?700:400}">${nm[pc]}</text>`;
   }
-  g+=`<text x="${c}" y="${c-2}" font-size="13" font-weight="700" text-anchor="middle" fill="var(--fg)">${nm[st.root]}</text><text x="${c}" y="${c+14}" font-size="11" text-anchor="middle" fill="var(--mut)">${iv.length} notes</text>`;
   return `<svg viewBox="0 0 ${S} ${S}" font-family="system-ui,sans-serif">${g}</svg>`;
 }
 
 function render(){
   stop();
-  st.root=+$('root').value;
-  const sc=SC[st.sk],iv=sc.i,nm=names(),P=positions(iv);
-  if(st.pos>=P.length)st.pos=0;
-  $('scales').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===st.sk));
+  const sc=SC[SK()],iv=sc.i,nm=names(),root=R(),P=positions(iv);
+  if(st.pos>P.length)st.pos=0;
   const steps=iv.map((k,i)=>(i+1<iv.length?iv[i+1]:12)-k);
-  $('strip').innerHTML=iv.map((k,i)=>`<div class="n ${k?'':'r'}" data-pc="${(st.root+k)%12}"><b>${nm[(st.root+k)%12]}</b><small>${IV[k]}</small></div><span class="st">${stepTxt(steps[i])}</span>`).join('')+`<div class="n r" data-pc="${st.root}"><b>${nm[st.root]}</b><small>8</small></div>`;
-  $('title').textContent=`${nm[st.root]} ${sc.n.toLowerCase()}`;
-  $('pos').innerHTML=P.map((p,i)=>`<button data-i="${i}" class="${i===st.pos?'on':''}">Pos. ${i+1} · case ${p.lo}</button>`).join('');
+  $('strip').innerHTML=iv.map((k,i)=>`<div class="n ${k?'':'r'}" data-pc="${(root+k)%12}"><b>${nm[(root+k)%12]}</b><small>${IV[k]}</small></div><span class="st">${stepTxt(steps[i])}</span>`).join('')+`<div class="n r" data-pc="${root}"><b>${nm[root]}</b><small>8</small></div>`;
+  $('title').textContent=`${nm[root]} ${sc.n.toLowerCase()}`;
+  // 0 = tout le manche, puis une position par note
+  $('pos').innerHTML=`<button data-i="0" class="${st.pos===0?'on':''}">Tout le manche</button>`+P.map((p,i)=>`<button data-i="${i+1}" class="${st.pos===i+1?'on':''}">Position ${i+1}</button>`).join('');
   $('pos').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.pos=+b.dataset.i;render();});
-  const b=P[st.pos];
-  $('neck').innerHTML=neck(0,15,{fw:52,sh:30,r:11,box:b});
-  $('zoom').innerHTML=neck(Math.max(0,b.lo-(b.lo===0?0:1)),b.hi+1,{fw:64,sh:38,r:14});
-  $('ptitle').textContent=`Position ${st.pos+1}`;
-  $('prange').textContent=`cases ${b.lo} à ${b.hi}`;
+  const b=st.pos?P[st.pos-1]:null;
+  $('prange').textContent=b?`cases ${b.lo} à ${b.hi}`:'cases 0 à 15';
+  $('neck').innerHTML=neck(0,15,b);
   $('poly').innerHTML=poly();
-  const nT=steps.map(stepTxt).join(' ');
-  $('formula').innerHTML=`Formule : <b style="color:var(--fg)">${nT}</b> (T = ton, ½ = demi-ton). Les chiffres sur le polygone donnent le nombre de demi-tons entre deux notes voisines. Deux gammes avec la même forme tournée sont des modes l'une de l'autre.`;
+  $('formula').textContent=steps.map(stepTxt).join(' ');
 }
 
-// ---------- Audio : gamme montante puis descendante, note en surbrillance ----------
+// Écoute : gamme montante puis descendante, chaque note s'allume
 function pluck(t,midi){
-  const f=440*Math.pow(2,(midi-69)/12),o=ctx.createOscillator(),o2=ctx.createOscillator(),gn=ctx.createGain(),lp=ctx.createBiquadFilter();
-  o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;
+  const f=440*Math.pow(2,(midi-69)/12),o=ctx.createOscillator(),o2=ctx.createOscillator(),gn=ctx.createGain(),g2=ctx.createGain(),lp=ctx.createBiquadFilter();
+  o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;g2.gain.value=.25;
   lp.type='lowpass';lp.frequency.setValueAtTime(f*8,t);lp.frequency.exponentialRampToValueAtTime(f*1.5,t+.6);
-  gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(.35,t+.008);gn.gain.exponentialRampToValueAtTime(.0001,t+1.2);
-  const g2=ctx.createGain();g2.gain.value=.25;o2.connect(g2).connect(lp);o.connect(lp);lp.connect(gn).connect(ctx.destination);
+  gn.gain.setValueAtTime(.0001,t);gn.gain.exponentialRampToValueAtTime(.35,t+.008);gn.gain.exponentialRampToValueAtTime(.0001,t+1.2);
+  o2.connect(g2).connect(lp);o.connect(lp);lp.connect(gn).connect(ctx.destination);
   o.start(t);o2.start(t);o.stop(t+1.3);o2.stop(t+1.3);
 }
-function hot(pc){document.querySelectorAll('[data-pc]').forEach(e=>e.classList.toggle('hot',+e.dataset.pc===pc));}
-function stop(){if(timer){timer.forEach(clearTimeout);timer=null;}hot(-1);}
+const hot=pc=>document.querySelectorAll('[data-pc]').forEach(e=>e.classList.toggle('hot',+e.dataset.pc===pc));
+function stop(){if(timer){timer.forEach(clearTimeout);timer=null;}hot(-1);$('playBtn').textContent='Écouter la gamme';}
 $('playBtn').onclick=()=>{
+  if(timer){stop();return;}
   try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();}catch(e){return;}
-  stop();
-  const iv=SC[st.sk].i,base=48+st.root+(st.root>=4?0:12),seq=iv.map(k=>base+k).concat([base+12]);
-  const full=seq.concat(seq.slice(0,-1).reverse()),dt=+$('tempo').value,t0=ctx.currentTime+.08;
+  const iv=SC[SK()].i,root=R(),base=48+root+(root>=4?0:12),seq=iv.map(k=>base+k).concat([base+12]);
+  const full=seq.concat(seq.slice(0,-1).reverse()),dt=.36,t0=ctx.currentTime+.08;
   timer=full.map((m,i)=>{pluck(t0+i*dt,m);return setTimeout(()=>hot(m%12),(i*dt+.08)*1000);});
-  timer.push(setTimeout(()=>hot(-1),(full.length*dt+.4)*1000));
+  timer.push(setTimeout(stop,(full.length*dt+.4)*1000));
+  $('playBtn').textContent='Stop';
 };
-$('stopBtn').onclick=stop;
-['root','lab','nom','all'].forEach(id=>$(id).onchange=render);
+['root','scale','lab','nom'].forEach(id=>$(id).onchange=()=>{if(id==='root'||id==='scale')st.pos=0;render();});
 render();
 }
 </script></body></html>
