@@ -1,7 +1,8 @@
 // Liste des onglets du site. Ajouter un outil = ajouter une ligne ici.
 (function(){
   var TOOLS=[
-    {href:'index.html',label:'Tab → Gamme'}
+    {href:'index.html',label:'Tab → Gamme'},
+    {href:'gammes.html',label:'Gammes'}
   ];
   var nav=document.getElementById('tabs');if(!nav)return;
   var here=location.pathname.split('/').pop()||'index.html';

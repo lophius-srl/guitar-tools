@@ -12,6 +12,15 @@ Colle une tablature ASCII (6 cordes, mesures séparées par `|`). Pour chaque me
 - les notes hors gamme expliquées, et les doigtés corrigés pour rester dans la position (même octave) ;
 - export PDF imprimable.
 
+## Gammes
+
+Choisis une tonique et une gamme (modes, pentatoniques, mineures harmonique et mélodique, blues, gammes « autres ») :
+
+- le manche complet (cases 0 à 15) avec la position sélectionnée mise en évidence ;
+- la position en grand ;
+- le polygone des intervalles sur la roue des 12 demi-tons, avec le nombre de demi-tons sur chaque côté ;
+- la formule (T, ½, 1½) et l'écoute de la gamme montante puis descendante.
+
 ## Structure
 
 - Site statique, sans build : chaque outil est une page HTML autonome.
