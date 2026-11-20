@@ -3,7 +3,7 @@
 <title>Tab → Gamme · Guitar tools</title>
 <meta name="description" content="Colle une tablature de guitare : pour chaque mesure, la gamme sur le manche, la position de la main et l'ordre des notes. Export PDF.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 <style>
 /* Spécifique à Tab → Gamme */
 textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line2);border-radius:8px;padding:10px;white-space:pre;overflow-x:auto;margin:0 0 12px}
@@ -15,10 +15,13 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .card h2 .chg{color:var(--acc)}
 .pos{display:inline-block;font-size:13px;font-weight:600;color:var(--acc);background:var(--accL);border-radius:6px;padding:2px 8px;margin-bottom:6px}
 .expl{font-size:13px;margin-top:8px;line-height:1.5}
-.lbl0{font-size:12px;font-weight:600;color:var(--mut);margin:6px 0 2px}
-.mob{display:none}
-@media(max-width:640px){.desk{display:none}.mob{display:block}}
-.lbl{font-size:12px;font-weight:600;color:var(--root);margin-bottom:2px}
+/* Mesure : tablature à gauche, manche à droite (ordinateur) ; empilés sur mobile */
+.mgrid{display:grid;grid-template-columns:max-content 300px;gap:14px 40px;align-items:center;justify-content:start}
+.mright svg{width:100%!important;max-width:100%!important;height:auto}
+.mleft .mt{font-size:15px;line-height:1.55;margin:0 0 6px}
+.lbl0{font-size:12px;font-weight:600;color:var(--mut);margin:8px 0 2px}
+@media(max-width:640px){.mgrid{grid-template-columns:minmax(0,1fr)}.mleft .mt{font-size:14px}}
+.lbl{font-size:12px;font-weight:600;color:var(--root);margin:8px 0 2px}
 .mt{font:12px/1.25 ui-monospace,Menlo,monospace;color:var(--mut);margin:0 0 8px;overflow-x:auto}
 .mt.fx{color:var(--fg);border-left:3px solid var(--root);padding-left:8px}
 .mv{color:var(--root)}
@@ -267,10 +270,9 @@ function run(){
     if(notIn.length)expl.push(`<span>Hors position (cercle pointillé) : ${notIn.map(n=>`${names[n.pc]} case ${n.f} corde ${SN[n.s]}`).join(', ')}${notIn.length>1?'. Il faut déplacer la main pour les jouer.':'. Il faut déplacer la main pour la jouer.'}</span>`);
     const pos=`Position ${ROM[p]||p} · cases ${p===1?'0':p} à ${p+3}`;
     const head=`Mesure ${i+1} — <span class="${chg?'chg':''}">${label(C)}</span> <small>${C.inS}/${C.n} · ${iv.map(x=>names[(root+x)%12]).join(' ')}</small>`;
-    const tabsDraw=[{label:moved.length?'Tablature':'Tablature',rows:raw,strong:!moved.length}].concat(moved.length?[{label:'Doigté corrigé',rows:seg,strong:true}]:[]);
-    const svgD=board(ns,root,iv,lab,names,p,tabsDraw),svg=board(ns,root,iv,lab,names,p),strip=h=>h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<');
+    const svg=board(ns,root,iv,lab,names,p),strip=h=>h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<');
     REP.ms.push({h:`Mesure ${i+1}`,sc:label(C),chg,cov:`${C.inS}/${C.n}`,notes:iv.map(x=>names[(root+x)%12]).join(' '),model:{ns:ns.map(n=>({s:n.s,f:n.f,o:n.o,pc:n.pc})),root,iv,names,p},raw,seg:moved.length?seg:null,pos,svg,seq:[...seq.matchAll(/<span><b>(\d+)<\/b> (.*?)<\/span>(?=<span><b>|$)/g)].map(m=>m[1]+'. '+strip(m[2])).join('   '),expl:expl.map(strip)});
-    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}</h2><div class="pos">${pos}</div><div class="desk wrap fit">${svgD}</div><div class="mob"><div class="lbl0">Tablature</div>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}<div class="wrap fit">${svg}</div></div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
+    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}</h2><div class="mgrid"><div class="mleft"><div class="pos">${pos}</div><div class="lbl0">Tablature</div>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}</div><div class="mright">${svg}</div></div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
   });
   // Tablature complète avec doigtés corrigés, 4 mesures par ligne
   const rowsTxt=[];
