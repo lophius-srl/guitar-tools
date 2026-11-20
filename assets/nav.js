@@ -5,6 +5,8 @@
     {href:'gammes.html',label:'Gammes'}
   ];
   var nav=document.getElementById('tabs');if(!nav)return;
-  var here=location.pathname.split('/').pop()||'index.html';
-  nav.innerHTML=TOOLS.map(function(t){return '<a href="'+t.href+'"'+(t.href===here?' aria-current="page"':'')+'>'+t.label+'</a>';}).join('');
+  // Cloudflare sert /gammes au lieu de /gammes.html : on compare sans l'extension
+  var norm=function(p){p=(p.split('/').pop()||'index').replace(/\.html$/,'');return p||'index';};
+  var here=norm(location.pathname);
+  nav.innerHTML=TOOLS.map(function(t){return '<a href="'+t.href.replace(/\.html$/,'').replace(/^index$/,'./')+'"'+(norm(t.href)===here?' aria-current="page"':'')+'>'+t.label+'</a>';}).join('');
 })();
