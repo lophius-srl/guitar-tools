@@ -22,6 +22,11 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .mright svg{height:230px!important;width:auto!important;max-width:100%!important}
 .mleft{min-width:240px}
 .mleft .mt{font-size:15px;line-height:1.55;margin:0 0 6px}
+.playm{margin-left:auto;font-size:14px;padding:6px 12px;min-height:36px}
+.playm.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.pn .ring{opacity:0;transition:opacity .1s}
+.pn.hot .ring{opacity:1}
+.seq span.hot{background:var(--accL);border-radius:6px;box-shadow:0 0 0 3px var(--accL)}
 .lbl0{font-size:12px;font-weight:600;color:var(--mut);margin:8px 0 2px}
 @media(max-width:640px){
   .mgrid{flex-direction:column;align-items:stretch}
@@ -212,7 +217,7 @@ function board(ns,root,iv,lab,names,p,tabs){
       const o=played[k].o.join(','),fs=o.length>3?8:o.length>1?10:12;
       const col=inS?'var(--acc)':'var(--out)';
       const nl=lab==='deg'?'':`<text x="${cx+13}" y="${cy-8}" font-size="9.5" font-weight="700" fill="${col}">${nm}</text>`;
-      g+=(box?'':`<circle cx="${cx}" cy="${cy}" r="15" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 2.5"/>`)+`<circle cx="${cx}" cy="${cy}" r="11.5" fill="${col}" ${d===0?'stroke="var(--root)" stroke-width="2.5"':''}/><text x="${cx}" y="${cy+fs*0.36}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#fff">${o}</text>${nl}${sub}`;
+      g+=`<g class="pn" data-o="${o}"><circle class="ring" cx="${cx}" cy="${cy}" r="17" fill="none" stroke="var(--acc)" stroke-width="3"/>`+(box?'':`<circle cx="${cx}" cy="${cy}" r="15" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 2.5"/>`)+`<circle cx="${cx}" cy="${cy}" r="11.5" fill="${col}" ${d===0?'stroke="var(--root)" stroke-width="2.5"':''}/><text x="${cx}" y="${cy+fs*0.36}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#fff">${o}</text></g>${nl}${sub}`;
     }else if(inS){
       const fs=main.length>3?7.5:main.length>2?8.5:9.5;
       g+=`<g opacity="${box?1:.3}"><circle cx="${cx}" cy="${cy}" r="10.5" fill="var(--card)" stroke="${d===0?'var(--root)':'var(--str)'}" stroke-width="${d===0?2:1}"/><text x="${cx}" y="${cy+fs*0.36}" font-size="${fs}" text-anchor="middle" fill="${d===0?'var(--root)':'var(--fg)'}" font-weight="${d===0?700:500}">${main}</text>${sub}</g>`;
@@ -229,6 +234,7 @@ function board(ns,root,iv,lab,names,p,tabs){
 }
 
 function run(){
+  if(typeof stopPlay==='function')stopPlay();
   const out=$('out'),info=$('info');out.innerHTML='';$('sugg').innerHTML='';$('strip').innerHTML='';
   const ms=parse($('tab').value);
   if(!ms.length){info.innerHTML='<span class="err">Aucune tablature reconnue. Il faut 6 lignes qui commencent par le nom de la corde (e|, B|, G|, D|, A|, E|).</span>';return;}
@@ -246,7 +252,7 @@ function run(){
   const gn=namesFor(G.r,G.sk),giv=SCALES[G.sk].i;
   $('strip').innerHTML=giv.map(i=>`<div class="n ${i?'':'r'}"><b>${gn[(G.r+i)%12]}</b><small>${IV[i]}</small></div>`).join('');
   info.innerHTML=`Gamme principale : <b>${label(G)}</b> — ${G.inS}/${G.n} notes dans la gamme`+(per?'. Chaque mesure peut prendre sa propre gamme si une autre colle mieux.':'');
-  const fixed=[];REP={title:label(G),cov:`${G.inS}/${G.n}`,scale:giv.map(i=>gn[(G.r+i)%12]+' ('+IV[i]+')').join('  '),ms:[]};
+  MEAS=[];const fixed=[];REP={title:label(G),cov:`${G.inS}/${G.n}`,scale:giv.map(i=>gn[(G.r+i)%12]+' ('+IV[i]+')').join('  '),ms:[]};
   ms.forEach(({notes:ns,raw},i)=>{
     const tab=`<pre class="mt">${raw.map((r,s)=>SN[s]+'|'+r.replace(/</g,'&lt;')+'|').join('\n')}</pre>`;
     if(!ns.length){fixed.push(raw);REP.ms.push({h:`Mesure ${i+1}`,raw,silence:true});out.insertAdjacentHTML('beforeend',`<div class="card"><h2>Mesure ${i+1}</h2>${tab}<div class="seq"><i>Pas de note (silence)</i></div></div>`);return;}
@@ -264,7 +270,7 @@ function run(){
     const groups={};ns.forEach(n=>(groups[n.o]=groups[n.o]||[]).push(n));
     const seq=Object.entries(groups).map(([o,g])=>{
       const t=g.map(n=>{const d=(n.pc-root+12)%12,bad=!iv.includes(d);return `<span class="${bad?'out':''}" style="margin:0">${names[n.pc]} <i>(${IV[d]})</i></span>`;}).join(' + ');
-      return `<span><b>${o}</b> ${t}</span>`;}).join('');
+      return `<span data-o="${o}"><b>${o}</b> ${t}</span>`;}).join('');
     const fix=$('fix').checked,p=position(ns,fix),moved=fix?relocate(ns,p):[],notIn=ns.filter(n=>!inBox(n.f,p));
     const seg=segOf(ns,raw);fixed.push(seg);
     const outS=[...new Set(ns.map(n=>n.pc).filter(pc=>!iv.includes((pc-root+12)%12)))];
@@ -276,10 +282,11 @@ function run(){
     moved.forEach(({n,from})=>expl.push(`<span class="mv"><b>${names[n.pc]}</b> déplacé : corde ${SN[from.s]} case ${from.f} → corde ${SN[n.s]} case ${n.f}, pour rester dans la position.</span>`));
     if(notIn.length)expl.push(`<span>Hors position (cercle pointillé) : ${notIn.map(n=>`${names[n.pc]} case ${n.f} corde ${SN[n.s]}`).join(', ')}${notIn.length>1?'. Il faut déplacer la main pour les jouer.':'. Il faut déplacer la main pour la jouer.'}</span>`);
     const pos=`Position ${ROM[p]||p} · cases ${p===1?'0':p} à ${p+3}`;
+    MEAS[i]=ns.map(n=>({o:n.o,midi:OPEN[n.s]+n.f}));
     const head=`Mesure ${i+1} — <span class="${chg?'chg':''}">${label(C)}</span> <small>${C.inS}/${C.n} · ${iv.map(x=>names[(root+x)%12]).join(' ')}</small>`;
     const svg=board(ns,root,iv,lab,names,p),strip=h=>h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<');
-    REP.ms.push({h:`Mesure ${i+1}`,sc:label(C),chg,cov:`${C.inS}/${C.n}`,notes:iv.map(x=>names[(root+x)%12]).join(' '),model:{ns:ns.map(n=>({s:n.s,f:n.f,o:n.o,pc:n.pc})),root,iv,names,p},raw,seg:moved.length?seg:null,pos,svg,seq:[...seq.matchAll(/<span><b>(\d+)<\/b> (.*?)<\/span>(?=<span><b>|$)/g)].map(m=>m[1]+'. '+strip(m[2])).join('   '),expl:expl.map(strip)});
-    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}</h2><div class="mgrid"><div class="mleft"><div class="pos">${pos}</div><div class="lbl0">Tablature</div>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}</div><div class="mright">${svg}</div></div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
+    REP.ms.push({h:`Mesure ${i+1}`,sc:label(C),chg,cov:`${C.inS}/${C.n}`,notes:iv.map(x=>names[(root+x)%12]).join(' '),model:{ns:ns.map(n=>({s:n.s,f:n.f,o:n.o,pc:n.pc})),root,iv,names,p},raw,seg:moved.length?seg:null,pos,svg,seq:[...seq.matchAll(/<span[^>]*><b>(\d+)<\/b> (.*?)<\/span>(?=<span[^>]*><b>|$)/g)].map(m=>m[1]+'. '+strip(m[2])).join('   '),expl:expl.map(strip)});
+    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}<button class="playm" data-i="${i}">Écouter</button></h2><div class="mgrid"><div class="mleft"><div class="pos">${pos}</div><div class="lbl0">Tablature</div>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}</div><div class="mright">${svg}</div></div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
   });
   // Tablature complète avec doigtés corrigés, 4 mesures par ligne
   const rowsTxt=[];
@@ -292,6 +299,31 @@ function run(){
   $('cp').onclick=async()=>{try{await navigator.clipboard.writeText(full);$('cpm').textContent='Copié';}catch(e){$('cpm').textContent='Copie refusée : sélectionne le texte à la main';}};
   $('use').onclick=()=>{$('tab').value=full;run();window.scrollTo({top:0,behavior:'smooth'});};
 }
+// ---------- Écoute d'une mesure : notes dans l'ordre, accords plaqués, note entourée ----------
+let MEAS=[],actx=null,ptimers=null,pbtn=null;
+function pluck(t,midi){
+  const f=440*Math.pow(2,(midi-69)/12),o=actx.createOscillator(),o2=actx.createOscillator(),gn=actx.createGain(),g2=actx.createGain(),lp=actx.createBiquadFilter();
+  o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;g2.gain.value=.25;
+  lp.type='lowpass';lp.frequency.setValueAtTime(f*8,t);lp.frequency.exponentialRampToValueAtTime(f*1.5,t+.6);
+  gn.gain.setValueAtTime(.0001,t);gn.gain.exponentialRampToValueAtTime(.3,t+.008);gn.gain.exponentialRampToValueAtTime(.0001,t+1.6);
+  o2.connect(g2).connect(lp);o.connect(lp);lp.connect(gn).connect(actx.destination);
+  o.start(t);o2.start(t);o.stop(t+1.7);o2.stop(t+1.7);
+}
+function markO(card,o){card.querySelectorAll('[data-o]').forEach(e=>e.classList.toggle('hot',o>0&&e.dataset.o.split(',').map(Number).includes(o)));}
+function stopPlay(){
+  if(ptimers){ptimers.forEach(clearTimeout);ptimers=null;}
+  if(pbtn){pbtn.classList.remove('on');pbtn.textContent='Écouter';markO(pbtn.closest('.card'),0);pbtn=null;}
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.playm');if(!b)return;
+  const again=b===pbtn;stopPlay();if(again)return;
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();}catch(err){return;}
+  const notes=MEAS[+b.dataset.i]||[],card=b.closest('.card'),dt=.5,t0=actx.currentTime+.08;
+  const steps=[...new Set(notes.map(n=>n.o))].sort((a,c)=>a-c);
+  pbtn=b;b.classList.add('on');b.textContent='Stop';
+  ptimers=steps.map((o,k)=>{notes.filter(n=>n.o===o).forEach(n=>pluck(t0+k*dt,n.midi));return setTimeout(()=>markO(card,o),(k*dt+.08)*1000);});
+  ptimers.push(setTimeout(stopPlay,(steps.length*dt+.5)*1000));
+});
 let REP=null;
 const LIGHT={'--bg':'#ffffff','--fg':'#1d1b18','--mut':'#8a847a','--line':'#d8d2c6','--acc':'#c2552d','--root':'#2d6a8f','--card':'#ffffff','--out':'#b3261e','--str':'#9c958a'};
 const pdfTxt=t=>String(t).replace(/→/g,'->').replace(/[’]/g,"'").replace(/—/g,'-').replace(/[^\x00-\xff]/g,'');
