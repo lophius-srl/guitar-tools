@@ -3,7 +3,7 @@
 <title>Gammes · Guitar tools</title>
 <meta name="description" content="Visualise une gamme sur le manche de guitare, position par position, et ses intervalles sur la roue des 12 demi-tons. Écoute la gamme.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=3">
+<link rel="stylesheet" href="assets/style.css?v=4">
 <style>
 .duo{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px;align-items:center}
 @media(max-width:640px){.duo{grid-template-columns:minmax(0,1fr)}}
@@ -29,7 +29,7 @@
 <div class="card">
   <h2><span id="title"></span><small id="prange"></small></h2>
   <div class="seg" id="pos" style="margin-bottom:10px"></div>
-  <div class="scroll" id="neck"></div>
+  <div class="fit" id="neck"></div>
 </div>
 
 <div class="card">
@@ -47,7 +47,7 @@
 
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=3"></script>
+<script src="assets/nav.js?v=4"></script>
 <script>
 {
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -85,7 +85,7 @@ const SC={};CATS.forEach(c=>c[1].forEach(([k,n,i])=>SC[k]={n,i}));
 const MINOR=['dor','phr','aeo','loc','pmin','harm','melo','blues','hira','insen','hong'];
 const $=id=>document.getElementById(id);
 const st={pos:0};
-let ctx=null,timer=null;
+let ctx=null,timer=null,VERT=false;
 
 $('root').innerHTML=FRS.map((n,i)=>`<option value="${i}">${n} (${SH[i]})</option>`).join('');
 $('root').value='9';
@@ -99,25 +99,40 @@ const stepTxt=n=>({1:'½',2:'T',3:'1½',4:'2T'})[n]||n;
 // Une position par note de la gamme sur la corde de Mi grave, sur 5 cases
 const positions=iv=>iv.map(i=>((R()+i)%12-4+12)%12).sort((a,b)=>a-b).map(f=>({lo:f,hi:f+4}));
 
-// Manche : même dessin que dans Tab → Gamme
-function neck(lo,hi,box){
+// Manche : même dessin que dans Tab → Gamme.
+// vert=true (mobile) : cordes verticales (Mi grave à gauche), cases vers le bas.
+function neck(lo,hi,box,vert){
   const nm=names(),deg=$('lab').value==='deg',root=R(),iv=SC[SK()].i;
-  const first=Math.max(lo,1),fw=50,sh=30,r=10.5,openW=lo===0?36:0,left=24+openW,top=16,nCols=hi-first+1;
-  const W=left+nCols*fw+8,H=top+5*sh+28;
-  const x=f=>f===0?left-openW/2-2:left+(f-first+0.5)*fw,y=s=>top+s*sh;
+  const first=Math.max(lo,1),nCols=hi-first+1,r=vert?12:10.5;
+  const fw=vert?44:50,sh=vert?50:30,openW=lo===0?(vert?34:36):0,head=(vert?22:24)+openW,top=vert?22:16;
+  // a = axe des cases, b = axe des cordes
+  const A=f=>f===0?head-openW/2-2:head+(f-first+0.5)*fw;
+  const B=s=>vert?top+(5-s)*sh:top+s*sh;
+  const P=(a,b)=>vert?[b,a]:[a,b];
+  const L=(a1,b1,a2,b2,attr)=>{const[x1,y1]=P(a1,b1),[x2,y2]=P(a2,b2);return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${attr}/>`;};
+  const end=head+nCols*fw,aLen=end+8,bLen=top+5*sh+(vert?22:28);
+  const [W,H]=vert?[bLen,aLen]:[aLen,bLen];
   const inBox=f=>!box||f>=box.lo&&f<=box.hi;
   let g='';
-  if(box){const x0=box.lo===0?left-openW:x(box.lo)-fw/2,x1=x(box.hi)+fw/2;
-    g+=`<rect x="${x0}" y="${top-14}" width="${x1-x0}" height="${5*sh+28}" rx="10" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
-  for(let k=0;k<=nCols;k++){const xx=left+k*fw;g+=`<line x1="${xx}" y1="${top}" x2="${xx}" y2="${y(5)}" stroke="var(--line2)" stroke-width="${k===0&&first===1?5:1.5}"/>`;}
-  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f))g+=`<text x="${x(f)}" y="${H-6}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}">${f}</text>`;
-  for(let s=0;s<6;s++)g+=`<line x1="${left}" y1="${y(s)}" x2="${left+nCols*fw}" y2="${y(s)}" stroke="var(--str)" stroke-width="${0.8+s*0.3}"/><text x="4" y="${y(s)+4}" font-size="11" fill="var(--mut)">${SN[s]}</text>`;
+  if(box){const a0=box.lo===0?head-openW:A(box.lo)-fw/2,a1=A(box.hi)+fw/2,b0=top-14,bl=5*sh+28;
+    const[x,y]=P(a0,b0),[w,h]=vert?[bl,a1-a0]:[a1-a0,bl];
+    g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
+  for(let k=0;k<=nCols;k++){const aa=head+k*fw;g+=L(aa,top,aa,B(vert?0:5)+(vert?0:0),`stroke="var(--line2)" stroke-width="${k===0&&first===1?5:1.5}"`);}
+  if(vert){g='';
+    if(box){const a0=box.lo===0?head-openW:A(box.lo)-fw/2,a1=A(box.hi)+fw/2;g+=`<rect x="${top-14}" y="${a0}" width="${5*sh+28}" height="${a1-a0}" rx="10" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
+    for(let k=0;k<=nCols;k++){const aa=head+k*fw;g+=`<line x1="${top}" y1="${aa}" x2="${top+5*sh}" y2="${aa}" stroke="var(--line2)" stroke-width="${k===0&&first===1?5:1.5}"/>`;}
+  }
+  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f)){const[x,y]=vert?[top+5*sh+16,A(f)+4]:[A(f),bLen-6];
+    g+=`<text x="${x}" y="${y}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}">${f}</text>`;}
+  for(let s=0;s<6;s++){const bb=B(s);
+    g+=L(head,bb,end,bb,`stroke="var(--str)" stroke-width="${0.8+s*0.3}"`);
+    const[x,y]=vert?[bb,12]:[4,bb+4];g+=`<text x="${x}" y="${y}" font-size="11" text-anchor="${vert?'middle':'start'}" fill="var(--mut)">${SN[s]}</text>`;}
   for(let s=0;s<6;s++)for(let f=lo;f<=hi;f++){
     const pc=(OPEN[s]+f)%12,d=(pc-root+12)%12;if(!iv.includes(d))continue;
-    const t=deg?IV[d]:nm[pc],fs=t.length>3?7.5:t.length>2?8.5:9.5,isR=d===0,cx=x(f),cy=y(s);
+    const t=deg?IV[d]:nm[pc],fs=(t.length>3?7.5:t.length>2?8.5:9.5)*(vert?1.1:1),isR=d===0,[cx,cy]=P(A(f),B(s));
     g+=`<g class="dotg" data-pc="${pc}" opacity="${inBox(f)?1:.3}"><circle class="dot" cx="${cx}" cy="${cy}" r="${r}" fill="var(--card)" stroke="${isR?'var(--root)':'var(--str)'}" stroke-width="${isR?2:1}"/><text x="${cx}" y="${cy+fs*.36}" font-size="${fs}" text-anchor="middle" fill="${isR?'var(--root)':'var(--fg)'}" font-weight="${isR?700:500}">${t}</text></g>`;
   }
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="system-ui,sans-serif">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" font-family="system-ui,sans-serif" ${vert?`style="max-width:${W*1.15}px;margin:auto"`:''}>${g}</svg>`;
 }
 
 // Roue des 12 demi-tons : tonique en haut
@@ -149,7 +164,7 @@ function render(){
   $('pos').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.pos=+b.dataset.i;render();});
   const b=st.pos?P[st.pos-1]:null;
   $('prange').textContent=b?`cases ${b.lo} à ${b.hi}`:'cases 0 à 15';
-  $('neck').innerHTML=neck(0,15,b);
+  VERT=$('neck').clientWidth<560;$('neck').innerHTML=neck(0,15,b,VERT);
   $('poly').innerHTML=poly();
   $('formula').textContent=steps.map(stepTxt).join(' ');
 }
@@ -176,5 +191,7 @@ $('playBtn').onclick=()=>{
 };
 ['root','scale','lab','nom'].forEach(id=>$(id).onchange=()=>{if(id==='root'||id==='scale')st.pos=0;render();});
 render();
+// Bascule horizontal / vertical quand la largeur change (rotation du téléphone, fenêtre)
+const ro=new ResizeObserver(()=>{if(($('neck').clientWidth<560)!==VERT&&!timer)render();});ro.observe($('neck'));
 }
 </script></body></html>

@@ -3,7 +3,7 @@
 <title>Tab → Gamme · Guitar tools</title>
 <meta name="description" content="Colle une tablature de guitare : pour chaque mesure, la gamme sur le manche, la position de la main et l'ordre des notes. Export PDF.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=3">
+<link rel="stylesheet" href="assets/style.css?v=4">
 <style>
 /* Spécifique à Tab → Gamme */
 textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line2);border-radius:8px;padding:10px;white-space:pre;overflow-x:auto;margin:0 0 12px}
@@ -55,7 +55,7 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 <div id="full"></div>
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=3"></script>
+<script src="assets/nav.js?v=4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -258,7 +258,7 @@ function run(){
     const head=`Mesure ${i+1} — <span class="${chg?'chg':''}">${label(C)}</span> <small>${C.inS}/${C.n} · ${iv.map(x=>names[(root+x)%12]).join(' ')}</small>`;
     const svg=board(ns,root,iv,lab,names,p),strip=h=>h.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<');
     REP.ms.push({h:`Mesure ${i+1}`,sc:label(C),chg,cov:`${C.inS}/${C.n}`,notes:iv.map(x=>names[(root+x)%12]).join(' '),model:{ns:ns.map(n=>({s:n.s,f:n.f,o:n.o,pc:n.pc})),root,iv,names,p},raw,seg:moved.length?seg:null,pos,svg,seq:[...seq.matchAll(/<span><b>(\d+)<\/b> (.*?)<\/span>(?=<span><b>|$)/g)].map(m=>m[1]+'. '+strip(m[2])).join('   '),expl:expl.map(strip)});
-    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}</h2>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}<div class="pos">${pos}</div><div class="wrap">${svg}</div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
+    out.insertAdjacentHTML('beforeend',`<div class="card"><h2>${head}</h2>${tab}${moved.length?`<div class="lbl">Doigté corrigé</div><pre class="mt fx">${seg.map((r,s)=>SN[s]+'|'+r+'|').join('\n')}</pre>`:''}<div class="pos">${pos}</div><div class="wrap fit">${svg}</div><div class="seq">${seq}</div>${expl.length?`<div class="expl">${expl.join('<br>')}</div>`:''}</div>`);
   });
   // Tablature complète avec doigtés corrigés, 4 mesures par ligne
   const rowsTxt=[];
