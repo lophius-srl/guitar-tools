@@ -27,6 +27,7 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .pn .ring{opacity:0}
 .pn.hot .ring{opacity:1}
 .seq span.hot{background:var(--accL);border-radius:6px;box-shadow:0 0 0 3px var(--accL)}
+.panel input[type=text]{font:inherit;font-size:16px;color:var(--fg);padding:8px 12px;min-height:40px;border-radius:8px;border:1px solid var(--line2);background:var(--card);width:100%;max-width:480px}
 .lbl0{font-size:12px;font-weight:600;color:var(--mut);margin:8px 0 2px}
 @media(max-width:640px){
   .mgrid{flex-direction:column;align-items:stretch}
@@ -48,6 +49,7 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 <h1>Tab → Gamme</h1>
 <p class="sub">Colle une tablature : pour chaque mesure, la gamme sur le manche, la position de la main et l'ordre des notes à jouer.</p>
 <div class="panel">
+  <label class="field" style="margin-bottom:10px">Titre du morceau <input id="title" type="text" placeholder="Ex. : Mon morceau (intro)" autocomplete="off"></label>
   <textarea id="tab" spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Tablature"></textarea>
   <div class="fields">
     <label class="field">Tonique <select id="root"></select></label>
@@ -101,7 +103,8 @@ A|-------------|-3-----------|-------------|
 E|-------------|-------------|-------------|`;
 const $=id=>document.getElementById(id);
 // Reprend la dernière tablature collée (sinon l'exemple)
-{let t=null;try{t=localStorage.getItem('gt.tab');}catch(e){}$('tab').value=t&&t.trim()?t:EX;}
+{let t=null,ti='';try{t=localStorage.getItem('gt.tab');ti=localStorage.getItem('gt.title')||'';}catch(e){}$('tab').value=t&&t.trim()?t:EX;$('title').value=ti;}
+$('title').addEventListener('input',()=>{try{localStorage.setItem('gt.title',$('title').value);}catch(e){}});
 $('root').innerHTML='<option value="auto">Auto</option>'+FR.map((n,i)=>`<option value="${i}">${n} (${SH[i]})</option>`).join('');
 $('scale').innerHTML='<option value="auto">Auto</option>'+Object.entries(SCALES).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
 const isD=c=>c>='0'&&c<='9';
@@ -332,109 +335,88 @@ const LIGHT={'--bg':'#ffffff','--fg':'#1d1b18','--mut':'#8a847a','--line':'#d8d2
 const pdfTxt=t=>String(t).replace(/→/g,'->').replace(/[’]/g,"'").replace(/—/g,'-').replace(/[^\x00-\xff]/g,'');
 // ---------- Export PDF (dessin vectoriel, pensé pour l'impression) ----------
 const PC={ink:'#1d1b18',mut:'#77716a',line:'#cfc8bb',acc:'#c2552d',accL:'#f9e9e1',root:'#2d6a8f',rootL:'#e6f0f6',out:'#b3261e',str:'#8f887d',dot:'#a39c90'};
-function pdfBoard(d,X,Y,maxW,m){
+// Manche dessiné en vectoriel. Taille fixe (k) pour que toutes les mesures aient la même hauteur.
+function pdfBoard(d,X,Y,m,k){
   const {ns,root,iv,names,p}=m;
   let lo=Math.min(...ns.map(n=>n.f)),hi=Math.max(...ns.map(n=>n.f));
   lo=Math.max(0,Math.min(lo,p)-1);if(lo===1)lo=0;hi=Math.max(hi+1,p+4,lo+4);
-  const first=Math.max(lo,1),nCols=hi-first+1,openW=lo===0?8:0,lab=5;
-  const fw=Math.min(15,(maxW-lab-openW-2)/nCols),sh=6.6,left=X+lab+openW,top=Y+4;
-  const x=f=>f===0?left-openW/2-0.6:left+(f-first+0.5)*fw,y=s=>top+s*sh,W=lab+openW+nCols*fw;
-  // zone de position
+  const first=Math.max(lo,1),nCols=hi-first+1,openW=(lo===0?8:0)*k,lab=4*k;
+  const fw=12*k,sh=5.4*k,left=X+lab+openW,top=Y+3.2*k;
+  const x=f=>f===0?left-openW/2-0.5*k:left+(f-first+0.5)*fw,y=s=>top+s*sh;
   const x0=p===1?(lo===0?left-openW:left):x(p)-fw/2,x1=x(p+3)+fw/2;
-  d.setFillColor(PC.accL);d.setDrawColor(PC.acc);d.setLineWidth(0.3);d.roundedRect(x0,top-4,x1-x0,5*sh+8,2,2,'FD');
-  // cases et cordes
+  d.setFillColor(PC.accL);d.setDrawColor(PC.acc);d.setLineWidth(0.25);d.roundedRect(x0,top-3.2*k,x1-x0,5*sh+6.4*k,1.6*k,1.6*k,'FD');
   d.setDrawColor(PC.line);
-  for(let k=0;k<=nCols;k++){d.setLineWidth(k===0&&first===1?1.2:0.3);d.line(left+k*fw,top,left+k*fw,y(5));}
-  d.setFont('helvetica','normal');d.setFontSize(6.5);d.setTextColor(PC.mut);
-  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15,17,19,21].includes(f))d.text(String(f),x(f),y(5)+8,{align:'center'});
-  for(let s=0;s<6;s++){d.setDrawColor(PC.str);d.setLineWidth(0.15+s*0.07);d.line(left,y(s),left+nCols*fw,y(s));d.setFont('helvetica','normal');d.setFontSize(7);d.setTextColor(PC.mut);d.text(SN[s],X,y(s)+1);}
-  const played={};ns.forEach(n=>{const k=n.s+'-'+n.f;(played[k]=played[k]||[]).push(n.o);});
+  for(let c=0;c<=nCols;c++){d.setLineWidth(c===0&&first===1?1:0.25);d.line(left+c*fw,top,left+c*fw,y(5));}
+  d.setFont('helvetica','normal');d.setFontSize(6*k);d.setTextColor(PC.mut);
+  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15,17,19,21].includes(f))d.text(String(f),x(f),y(5)+6*k,{align:'center'});
+  for(let s=0;s<6;s++){d.setDrawColor(PC.str);d.setLineWidth(0.12+s*0.06);d.line(left,y(s),left+nCols*fw,y(s));d.setFont('helvetica','normal');d.setFontSize(6.5*k);d.setTextColor(PC.mut);d.text(SN[s],X,y(s)+0.9*k);}
+  const played={};ns.forEach(n=>{const kk=n.s+'-'+n.f;(played[kk]=played[kk]||[]).push(n.o);});
   for(let s=0;s<6;s++)for(let f=lo;f<=hi;f++){
-    const pc=(OPEN[s]+f)%12,dg=(pc-root+12)%12,inS=iv.includes(dg),box=inBox(f,p),k=s+'-'+f,cx=x(f),cy=y(s),isR=dg===0;
-    if(played[k]){
-      const col=inS?PC.acc:PC.out,o=played[k].join(',');
-      if(!box){d.setDrawColor(col);d.setLineWidth(0.3);d.setLineDashPattern([0.7,0.5],0);d.circle(cx,cy,3.1,'S');d.setLineDashPattern([],0);}
-      d.setFillColor(col);if(isR){d.setDrawColor(PC.root);d.setLineWidth(0.6);d.circle(cx,cy,2.45,'FD');}else d.circle(cx,cy,2.45,'F');
-      d.setFont('helvetica','bold');d.setFontSize(o.length>2?5:7);d.setTextColor('#ffffff');d.text(o,cx,cy+0.9,{align:'center'});
-      d.setFontSize(6);d.setTextColor(col);d.text(pdfTxt(names[pc]),cx+2.8,cy-1.9);
-      d.setFont('helvetica','normal');d.setFontSize(5);d.setTextColor(PC.mut);d.text(IV[dg],cx,cy+4.3,{align:'center'});
+    const pc=(OPEN[s]+f)%12,dg=(pc-root+12)%12,inS=iv.includes(dg),box=inBox(f,p),kk=s+'-'+f,cx=x(f),cy=y(s),isR=dg===0;
+    if(played[kk]){
+      const col=inS?PC.acc:PC.out,o=played[kk].join(',');
+      if(!box){d.setDrawColor(col);d.setLineWidth(0.25);d.setLineDashPattern([0.6,0.45],0);d.circle(cx,cy,2.6*k,'S');d.setLineDashPattern([],0);}
+      d.setFillColor(col);if(isR){d.setDrawColor(PC.root);d.setLineWidth(0.5);d.circle(cx,cy,2.1*k,'FD');}else d.circle(cx,cy,2.1*k,'F');
+      d.setFont('helvetica','bold');d.setFontSize((o.length>2?4.6:6.3)*k);d.setTextColor('#ffffff');d.text(o,cx,cy+0.8*k,{align:'center'});
+      d.setFontSize(5.4*k);d.setTextColor(col);d.text(pdfTxt(names[pc]),cx+2.4*k,cy-1.6*k);
     }else if(inS){
-      const fade=!box;
-      d.setFillColor(fade?'#ffffff':(isR?PC.rootL:'#ffffff'));d.setDrawColor(isR?PC.root:(fade?'#ddd8cf':PC.dot));d.setLineWidth(isR?0.5:0.25);d.circle(cx,cy,2.2,'FD');
-      const nm=pdfTxt(names[pc]);d.setFont('helvetica',isR?'bold':'normal');d.setFontSize(nm.length>3?4.6:5.6);
-      d.setTextColor(fade?'#bdb7ad':(isR?PC.root:PC.ink));d.text(nm,cx,cy+0.75,{align:'center'});
-      d.setFont('helvetica','normal');d.setFontSize(4.6);d.setTextColor(fade?'#cfc9bf':PC.mut);d.text(IV[dg],cx,cy+4.2,{align:'center'});
+      const fade=!box,nm=pdfTxt(names[pc]);
+      d.setFillColor(isR&&!fade?PC.rootL:'#ffffff');d.setDrawColor(isR?PC.root:(fade?'#ddd8cf':PC.dot));d.setLineWidth(isR?0.4:0.2);d.circle(cx,cy,1.9*k,'FD');
+      d.setFont('helvetica',isR?'bold':'normal');d.setFontSize((nm.length>3?4.2:5)*k);
+      d.setTextColor(fade?'#bdb7ad':(isR?PC.root:PC.ink));d.text(nm,cx,cy+0.65*k,{align:'center'});
     }
   }
-  return {w:W,h:5*sh+14};
+  return {w:lab+openW+nCols*fw,h:5*sh+9.5*k};
 }
 async function makePdf(){
-  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),M=14,PW=210-2*M,BOT=297-14;let y=M;
+  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),M=12,PW=210-2*M,BOT=297-12;let y=M;
   const set=(sz,st,c,f)=>{d.setFont(f||'helvetica',st||'normal');d.setFontSize(sz);d.setTextColor(c||PC.ink);};
-  const lh=sz=>sz*0.3528*1.35;
-  const wrap=(t,sz,w)=>{set(sz);return d.splitTextToSize(pdfTxt(t),w);};
+  const lh=sz=>sz*0.3528*1.3;
   const monoSize=(lines,w,max)=>Math.min(max,w/(Math.max(...lines.map(l=>l.length))*0.6*0.3528));
-  // En-tête
-  d.setFillColor(PC.ink);d.rect(0,0,210,24,'F');
-  set(17,'bold','#ffffff');d.text('Tablature -> gamme',M,11);
-  set(9.5,'normal','#e9e4da');d.text(pdfTxt(`Gamme principale : ${REP.title}  -  ${REP.cov} notes dans la gamme`),M,18);
-  y=31;
-  // Bande de la gamme
-  const sc=REP.scale.split('  ').map(t=>t.match(/^(.*) \((.*)\)$/));
-  const bw=Math.min(22,PW/sc.length-2);
-  sc.forEach((m,i)=>{const bx=M+i*(bw+2),r=m[2]==='1';d.setFillColor(r?PC.rootL:'#ffffff');d.setDrawColor(r?PC.root:PC.line);d.setLineWidth(r?0.6:0.3);d.roundedRect(bx,y,bw,12,1.5,1.5,'FD');
-    set(11,'bold',r?PC.root:PC.ink);d.text(pdfTxt(m[1]),bx+bw/2,y+5.6,{align:'center'});set(7.5,'normal',PC.mut);d.text(m[2],bx+bw/2,y+10,{align:'center'});});
-  y+=17;
-  // Légende
-  let lx=M;const leg=(draw,t)=>{draw(lx+1.8,y);set(7.5,'normal',PC.mut);d.text(pdfTxt(t),lx+5,y+1);lx+=5+d.getTextWidth(pdfTxt(t))+6;};
-  leg((cx,cy)=>{d.setFillColor(PC.acc);d.circle(cx,cy,1.8,'F');},'note jouée (n° = ordre)');
-  leg((cx,cy)=>{d.setFillColor('#ffffff');d.setDrawColor(PC.dot);d.setLineWidth(.25);d.circle(cx,cy,1.8,'FD');},'note de la gamme');
-  leg((cx,cy)=>{d.setFillColor(PC.rootL);d.setDrawColor(PC.root);d.setLineWidth(.5);d.circle(cx,cy,1.8,'FD');},'tonique');
-  leg((cx,cy)=>{d.setFillColor(PC.out);d.circle(cx,cy,1.8,'F');},'hors gamme');
-  leg((cx,cy)=>{d.setFillColor(PC.accL);d.setDrawColor(PC.acc);d.setLineWidth(.3);d.roundedRect(cx-1.8,cy-1.8,3.6,3.6,.6,.6,'FD');},'position de la main');
-  y+=7;
-  // Mesures
-  const LW=50,RX=M+LW+5,RW=PW-LW-5;
+  const title=pdfTxt(($('title').value||'').trim());
+  // En-tête : titre du morceau, gamme, légende sur une ligne
+  set(18,'bold');d.text(title||'Tablature',M,y+6);y+=9;
+  set(9.5,'normal',PC.mut);d.text(pdfTxt(`Gamme : ${REP.title}  ·  ${REP.scale.replace(/ \([^)]*\)/g,'').split('  ').join(' ')}`),M,y+3);y+=6;
+  let lx=M;const leg=(draw,t)=>{draw(lx+1.5,y+1.3);set(7,'normal',PC.mut);d.text(pdfTxt(t),lx+4,y+2.3);lx+=4+d.getTextWidth(pdfTxt(t))+5;};
+  leg((cx,cy)=>{d.setFillColor(PC.acc);d.circle(cx,cy,1.4,'F');},'note jouée (n° = ordre)');
+  leg((cx,cy)=>{d.setFillColor('#ffffff');d.setDrawColor(PC.dot);d.setLineWidth(.2);d.circle(cx,cy,1.4,'FD');},'note de la gamme');
+  leg((cx,cy)=>{d.setFillColor(PC.rootL);d.setDrawColor(PC.root);d.setLineWidth(.4);d.circle(cx,cy,1.4,'FD');},'tonique');
+  leg((cx,cy)=>{d.setFillColor(PC.out);d.circle(cx,cy,1.4,'F');},'hors gamme');
+  leg((cx,cy)=>{d.setFillColor(PC.accL);d.setDrawColor(PC.acc);d.setLineWidth(.25);d.roundedRect(cx-1.4,cy-1.4,2.8,2.8,.5,.5,'FD');},'position');
+  y+=5;d.setDrawColor(PC.line);d.setLineWidth(0.3);d.line(M,y,M+PW,y);y+=3;
+  // Mesures : tablature à jouer à gauche, manche à droite, ordre des notes dessous
+  const LW=62,k=0.82,BX=M+LW+6;
   for(const m of REP.ms){
-    const tabs=m.raw.map((r,s)=>SN[s]+'|'+r+'|'),segL=m.seg?m.seg.map((r,s)=>SN[s]+'|'+r+'|'):null;
-    const ts=monoSize(tabs.concat(segL||[]),LW-3,8),tH=6*ts*0.3528*1.25;
-    const leftH=tH+3+(segL?tH+7:0);
-    const seqL=m.silence?[]:wrap('Ordre : '+m.seq,8.5,PW),exL=m.silence?[]:m.expl.map(e=>wrap('- '+e,8,PW));
-    const boardH=m.silence?0:5*6.6+14;
-    const blockH=9+Math.max(leftH,boardH)+seqL.length*lh(8.5)+exL.flat().length*lh(8)+6;
+    const play=(m.seg||m.raw).map((r,s)=>SN[s]+'|'+r+'|');
+    const ts=monoSize(play,LW-2,9),tH=6*ts*0.3528*1.35;
+    const boardH=m.silence?0:5*5.4*k+9.5*k;
+    set(7.5);const seqL=m.silence?[]:d.splitTextToSize(pdfTxt(m.seq),PW);
+    const blockH=6+Math.max(tH+5,boardH)+seqL.length*lh(7.5)+4;
     if(y+blockH>BOT){d.addPage();y=M;}
-    // titre de la mesure
-    set(11.5,'bold');d.text(m.h,M,y+4);
-    if(!m.silence){
-      const tw=d.getTextWidth(m.h);set(9,'bold',m.chg?PC.acc:PC.ink);d.text(pdfTxt(m.sc),M+tw+4,y+4);
-      const sw=d.getTextWidth(pdfTxt(m.sc));
-      const pt=pdfTxt(m.pos);set(8,'bold','#ffffff');const pw=d.getTextWidth(pt)+5;
-      const nt=pdfTxt(`${m.cov}  ·  ${m.notes}`),nx=M+tw+4+sw+3;set(8,'normal',PC.mut);
-      if(nx+d.getTextWidth(nt)<M+PW-pw-3)d.text(nt,nx,y+4);else d.text(m.cov,nx,y+4);
-      set(8,'bold','#ffffff');d.setFillColor(PC.acc);d.roundedRect(M+PW-pw,y,pw,5.6,1.4,1.4,'F');d.text(pt,M+PW-pw/2,y+3.9,{align:'center'});
-    }
-    y+=9;const y0=y;
-    // tablatures
-    set(ts,'normal',PC.mut,'courier');d.text(tabs,M,y+ts*0.3528,{lineHeightFactor:1.25});
-    if(m.silence){set(9,'italic',PC.mut);d.text('Silence',RX,y+4);}
-    let ly=y+tH+3;
-    if(segL){set(7.5,'bold',PC.root);d.text('Doigté corrigé',M,ly+2.5);ly+=4.5;d.setFillColor(PC.root);d.rect(M,ly-0.5,0.8,tH+0.5,'F');set(ts,'normal',PC.ink,'courier');d.text(segL,M+2,ly+ts*0.3528,{lineHeightFactor:1.25});}
-    if(!m.silence)pdfBoard(d,RX,y0,RW,m.model);
-    y=y0+Math.max(leftH,boardH)+1;
-    if(seqL.length){set(8.5,'normal');d.text(seqL,M,y+3);y+=seqL.length*lh(8.5);}
-    exL.forEach((L,i)=>{const e=m.expl[i];set(8,'normal',/déplacé/.test(e)?PC.root:/pas dans la gamme/.test(e)?PC.out:PC.ink);d.text(L,M,y+3);y+=L.length*lh(8);});
-    y+=3;d.setDrawColor(PC.line);d.setLineWidth(0.3);d.line(M,y,M+PW,y);y+=4;
+    set(10.5,'bold');d.text(m.h,M,y+3.5);
+    if(!m.silence){const tw=d.getTextWidth(m.h);set(8.5,'bold',m.chg?PC.acc:PC.ink);d.text(pdfTxt(m.sc),M+tw+3,y+3.5);
+      const pt=pdfTxt(m.pos);set(7.5,'bold',PC.acc);d.text(pt,M+PW,y+3.5,{align:'right'});}
+    y+=6;const y0=y;
+    if(m.seg){set(6.5,'bold',PC.root);d.text('Doigté corrigé',M,y+2);}
+    set(ts,'normal',PC.ink,'courier');d.text(play,M,y+(m.seg?4:1)+ts*0.3528,{lineHeightFactor:1.35});
+    if(m.silence){set(8.5,'italic',PC.mut);d.text('Silence',BX,y+4);}
+    else pdfBoard(d,BX,y0,m.model,k);
+    y=y0+Math.max(tH+5,boardH);
+    if(seqL.length){set(7.5,'normal',PC.mut);d.text(seqL,M,y+2);y+=seqL.length*lh(7.5);}
+    y+=2;d.setDrawColor(PC.line);d.setLineWidth(0.2);d.line(M,y,M+PW,y);y+=2.5;
   }
-  // Tablature corrigée complète
-  d.addPage();y=M;set(13,'bold');d.text('Tablature avec doigtés corrigés',M,y+5);y+=11;
-  for(const b of REP.full.split('\n\n')){
-    const L=b.split('\n'),fs=monoSize(L,PW,9.5),h=L.length*fs*0.3528*1.3+5;
+  // Tablature complète corrigée, à la suite si la place le permet
+  const blocks=REP.full.split('\n\n');
+  const fsF=Math.min(...blocks.map(b=>monoSize(b.split('\n'),PW,9.5)));
+  if(y+12+6*fsF*0.3528*1.3>BOT){d.addPage();y=M;}else y+=3;
+  set(11,'bold');d.text('Tablature complète (doigtés corrigés)',M,y+4);y+=8;
+  for(const b of blocks){
+    const L=b.split('\n'),h=L.length*fsF*0.3528*1.3+4;
     if(y+h>BOT){d.addPage();y=M;}
-    set(fs,'normal',PC.ink,'courier');d.text(L,M,y+fs*0.3528,{lineHeightFactor:1.3});y+=h;
+    set(fsF,'normal',PC.ink,'courier');d.text(L,M,y+fsF*0.3528,{lineHeightFactor:1.3});y+=h;
   }
-  // Pieds de page
   const N=d.getNumberOfPages();
-  for(let i=1;i<=N;i++){d.setPage(i);set(7.5,'normal',PC.mut);d.text(pdfTxt(REP.title),M,292);d.text(`${i} / ${N}`,210-M,292,{align:'right'});}
+  for(let i=1;i<=N;i++){d.setPage(i);set(7,'normal',PC.mut);d.text(title||'',M,292);d.text(`${i} / ${N}`,210-M,292,{align:'right'});}
   return d.output('blob');
 }
 document.addEventListener('click',async e=>{
@@ -444,7 +426,7 @@ document.addEventListener('click',async e=>{
     // jsPDF n'est chargé qu'au premier export : la page s'affiche sans attendre le réseau
     if(!window.jspdf)await new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';sc.onload=ok;sc.onerror=()=>ko({message:'bibliothèque PDF non chargée (connexion ?)'});document.head.appendChild(sc);});
     const blob=await makePdf();
-    const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='tab-gamme.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);m.textContent='PDF téléchargé';
+    const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=(($('title').value||'').trim().replace(/[^\w\u00C0-\u017F -]+/g,'').replace(/\s+/g,'-')||'tab-gamme')+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);m.textContent='PDF téléchargé';
   }catch(err){m.textContent='Export impossible : '+(err&&err.message||err);}
   finally{b.disabled=false;}
 });
