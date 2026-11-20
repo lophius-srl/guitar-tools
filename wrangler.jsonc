@@ -1,0 +1,9 @@
+{
+  // Site statique servi par Cloudflare Workers (fichiers statiques uniquement, pas de script)
+  "name": "guitar-tools",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": ".",
+    "not_found_handling": "404-page"
+  }
+}
