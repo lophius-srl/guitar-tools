@@ -62,7 +62,6 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
 <script src="assets/nav.js?v=5"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const FLT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
@@ -399,7 +398,8 @@ document.addEventListener('click',async e=>{
   if(e.target.id!=='pdf')return;
   const b=e.target,m=$('cpm');b.disabled=true;m.textContent='Création du PDF…';
   try{
-    if(!window.jspdf)throw {message:'bibliothèque PDF non chargée'};
+    // jsPDF n'est chargé qu'au premier export : la page s'affiche sans attendre le réseau
+    if(!window.jspdf)await new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';sc.onload=ok;sc.onerror=()=>ko({message:'bibliothèque PDF non chargée (connexion ?)'});document.head.appendChild(sc);});
     const blob=await makePdf();
     const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='tab-gamme.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);m.textContent='PDF téléchargé';
   }catch(err){m.textContent='Export impossible : '+(err&&err.message||err);}
