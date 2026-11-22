@@ -63,6 +63,16 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .sectab{font-size:14px!important;line-height:1.5;white-space:pre;overflow-x:auto;margin:0 0 10px}
 .secboard{display:flex;justify-content:center}
 .sec-card h2 .pos{font-size:13px}
+@media(max-width:600px){
+  .sec-card h2{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px}
+  .sec-card h2 .rg{grid-column:1}
+  .sec-card h2 .playm{grid-column:2;grid-row:1;margin:0}
+  .sec-card h2 .pos{grid-column:1/span 2;justify-self:start}
+  .sectab{font-size:13px!important}
+  .cand{padding:8px 10px}
+  .cand .nm,.cand .pc{font-size:14px}
+  .bar{font-size:14px;padding:3px 7px}
+}
 .deg{display:inline-block;font-size:13px;font-weight:700;color:var(--root);background:var(--rootL);border-radius:6px;padding:1px 7px;margin-left:4px}
 .deg.borrow{color:var(--out);background:color-mix(in srgb,var(--out) 12%,transparent)}
 .secnew{display:block;width:100%;font-size:13px;font-weight:600;color:var(--root);margin:0 0 4px}
@@ -266,7 +276,7 @@ function relation(a,b){
   if(kMin(a)&&kMin(b)&&((rb-ra+12)%12===7||(ra-rb+12)%12===7))return 'tonalité voisine (une note change)';
   return '';
 }
-let FORCED=null;
+let FORCED=null,PERLINE=4;
 // ---------- Positions pensées pour tout le morceau ----------
 // Coût d'une position pour une mesure. Si la tablature n'est pas réadaptée,
 // toute note hors de la position compte comme un déplacement de la main.
@@ -430,7 +440,10 @@ function run(){
     });
     MEAS[si]=notesAll.map(n=>({o:n.o,midi:OPEN[n.s]+n.f}));
     // tablature de la section, 4 mesures par ligne
-    const chunks=[];for(let c=0;c<segs.length;c+=4)chunks.push(segs.slice(c,c+4));
+    // autant de mesures par ligne que la largeur le permet (4 au maximum) : pas de défilement sur téléphone
+    const segLen=Math.max(...segs.map(sg=>Math.max(...sg.map(r=>r.length))))+1,avail=Math.floor((out.clientWidth-40)/(window.innerWidth<=600?8.45:8.45));
+    const perLine=Math.max(1,Math.min(4,Math.floor((avail-3)/segLen)));PERLINE=perLine;
+    const chunks=[];for(let c=0;c<segs.length;c+=perLine)chunks.push(segs.slice(c,c+perLine));
     const tabTxt=chunks.map(ch=>SN.map((sn,s)=>sn+'|'+ch.map(sg=>sg[s]).join('|')+'|').join('\n')).join('\n\n');
     const range=sec.a===sec.b?`Mesure ${sec.a+1}`:`Mesures ${sec.a+1} à ${sec.b+1}`;
     const prevSec=secs[si-1],newKey=si>0&&prevSec.k!==key;
@@ -440,7 +453,7 @@ function run(){
     if(offPos.length)notes.push(`Hors position : ${offPos.map(n=>`${nm[n.pc]} (corde ${SN[n.s]}, case ${n.f})`).join(', ')}`);
     out.insertAdjacentHTML('beforeend',`<div class="card sec-card">
       ${newKey?`<span class="secnew">Changement de tonalité : ${kName(key,ksec.mode)}</span>`:''}
-      <h2>${range} <span class="pos" style="margin:0">Position ${ROM[p]||p} · cases ${p===1?'0':p} à ${p+3}</span>${notesAll.length?`<button class="playm" data-i="${si}">Écouter</button>`:''}</h2>
+      <h2><span class="rg">${range}</span> <span class="pos" style="margin:0">Position ${ROM[p]||p} · cases ${p===1?'0':p} à ${p+3}</span>${notesAll.length?`<button class="playm" data-i="${si}">Écouter</button>`:''}</h2>
       <div class="chips">${chips.map((c,j)=>`<span class="bar"><small>${sec.a+j+1}</small>${c}</span>`).join('')}</div>
       <div class="lbl0">${$('fix').checked?'Tablature (doigté dans la position)':'Tablature (originale)'}</div><pre class="mt fx sectab">${tabTxt.replace(/</g,'&lt;')}</pre>
       ${svg?`<div class="mright secboard">${svg}</div>`:''}
@@ -463,6 +476,8 @@ A_IDS.forEach(id=>$(id).onchange=()=>{saveA();run();});
 try{const f=localStorage.getItem('gt.analyse.fix');if(f!==null)$('fix').checked=f==='1';}catch(e){}
 $('fix').onchange=()=>{try{localStorage.setItem('gt.analyse.fix',$('fix').checked?'1':'0');}catch(e){}run();};
 $('go').onclick=run;
+// Rotation du téléphone / redimensionnement : on recalcule la mise en page des tablatures
+let RW=null;new ResizeObserver(()=>{const w=$('out').clientWidth;if(RW!==null&&Math.abs(w-RW)>40){clearTimeout(window.__rz);window.__rz=setTimeout(run,200);}RW=w;}).observe($('out'));
 $('summary').addEventListener('click',e=>{const b=e.target.closest('.cand,.cand-reset');if(!b)return;FORCED=b.dataset.k==='auto'?null:+b.dataset.k;run();});
 $('title').addEventListener('input',()=>{try{localStorage.setItem('gt.title',$('title').value);}catch(e){}});
 let TT=null;$('tab').addEventListener('input',()=>{FORCED=null;try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}clearTimeout(TT);TT=setTimeout(run,400);});
