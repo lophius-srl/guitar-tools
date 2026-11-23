@@ -200,22 +200,32 @@ M.mic={on:false,stream:null,src:null,an:null,timer:null,
     const c=M.audio();
     this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     this.src=c.createMediaStreamSource(this.stream);this.an=c.createAnalyser();this.an.fftSize=4096;this.src.connect(this.an);
-    this.on=true;this.cb=cb;this.opt=opt;const buf=new Float32Array(this.an.fftSize),hist=[];let held=null,cnt=0,silent=0,armed=true,lastRms=0;
+    this.on=true;this.cb=cb;this.opt=opt;this.an.fftSize=2048;
+    const buf=new Float32Array(2048),hist=[];let held=null,cnt=0,silent=0,armed=true,slow=0,raw=null,rawN=0,skip=0,lastOn=0,lastEmit=-9,fr=0;
+    // Toutes les 20 ms : volume sur les 20 dernières ms (pour sentir l'attaque tout de suite),
+    // hauteur sur les 43 dernières ms. Une note est annoncée dès que 2 mesures de suite sont d'accord.
     this.timer=setInterval(()=>{
-      this.an.getFloatTimeDomainData(buf);let rms=0;for(let i=0;i<buf.length;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/buf.length);
+      this.an.getFloatTimeDomainData(buf);const N=buf.length,K=Math.min(N,Math.round(c.sampleRate*.02));
+      let rms=0;for(let i=N-K;i<N;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/K);
       const thr=this.opt.thr||.008;let out={f:0,midi:null,cents:0,rms,clar:0};
-      // attaque : le volume remonte nettement → on réarme la détection de note
-      if(rms>lastRms*1.8&&rms>thr*2)armed=true;lastRms=rms*.6+lastRms*.4;
-      if(rms>thr){const r=yin(buf.subarray(0,2048),c.sampleRate);
-        if(r){let f=r.f;hist.push(f);if(hist.length>5)hist.shift();const med=hist.slice().sort((a,b)=>a-b)[hist.length>>1];
-          // une seule valeur aberrante (souvent l'octave) est remplacée par la médiane
-          if(Math.abs(1200*Math.log2(f/med))>80)f=med;
+      // attaque : le volume monte nettement au-dessus de sa moyenne récente → nouvelle note, même si c'est la même hauteur
+      // après une attaque, on oublie la hauteur précédente et on saute une mesure (encore mêlée à l'ancienne note)
+      fr++;if(rms>slow*1.3+thr*.5&&rms>thr*1.5&&fr-lastOn>4&&fr-lastEmit>4){armed=true;raw=null;rawN=0;skip=1;lastOn=fr;}slow=slow*.8+rms*.2;
+      let rmidi=null;
+      if(rms>thr){const r=yin(buf,c.sampleRate);
+        if(r){const mf0=M.freqToMidi(r.f);rmidi=Math.round(mf0);
+          let f=r.f;hist.push(f);if(hist.length>5)hist.shift();const med=hist.slice().sort((a,b)=>a-b)[hist.length>>1];
+          // affichage (accordeur) : une valeur aberrante isolée est remplacée par la médiane
+          if(hist.length>2&&Math.abs(1200*Math.log2(f/med))>80)f=med;
           const mf=M.freqToMidi(f),midi=Math.round(mf);out={f,midi,cents:(mf-midi)*100,rms,clar:r.clar};}}
-      if(out.midi==null){silent++;if(silent>4){held=null;cnt=0;armed=true;hist.length=0;}}else silent=0;
-      if(out.midi!=null){if(out.midi===held)cnt++;else{held=out.midi;cnt=1;armed=true;}
-        if(cnt>=3&&armed&&this.opt.onNote){armed=false;this.opt.onNote(out.midi,out);}}
+      if(rmidi==null){if(++silent>3){held=null;cnt=0;armed=true;hist.length=0;raw=null;rawN=0;}}
+      else{silent=0;
+        // reconnaissance de note : hauteur brute, sans lissage, pour réagir vite
+        if(skip>0)skip--;else{if(rmidi===raw)rawN++;else{raw=rmidi;rawN=1;}}
+        if(rawN>=2){if(raw!==held){held=raw;armed=true;}
+          if(armed&&this.opt.onNote){armed=false;lastEmit=fr;this.opt.onNote(raw,out);}}}
       try{this.cb&&this.cb(out);}catch(e){console.error(e);}
-    },33);
+    },20);
     return true;},
   stop(){if(!this.on)return;clearInterval(this.timer);try{this.src.disconnect();}catch(e){}this.stream.getTracks().forEach(t=>t.stop());
     this.on=false;this.cb=null;try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}}

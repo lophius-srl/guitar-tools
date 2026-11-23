@@ -124,7 +124,7 @@
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
 <script src="assets/nav.js?v=8"></script>
-<script src="assets/music.js?v=4"></script>
+<script src="assets/music.js?v=5"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -278,8 +278,8 @@ const SIM={
   round(){this.pos=0;this.listen=false;$('sLen').textContent=this.n;$('sLives').textContent='♥'.repeat(this.lives)+'♡'.repeat(3-this.lives);
     $('sMsg').className='msg';$('sMsg').textContent='Écoute…';this.draw();
     const beat=60/+$('sTempo').value,t0=M.now()+.15;let t=t0;
-    for(let i=0;i<this.n;i++){const x=this.seq[i];M.pluck(t,x.m,.32,Math.min(1.4,x.d*beat+.3));t+=Math.max(.28,x.d*beat);}
-    const ms=(t-t0+.7)*1000;ignoreUntil=Date.now()+ms;
+    for(let i=0;i<this.n;i++){const x=this.seq[i];M.pluck(t,x.m,.32,Math.min(1,x.d*beat+.2));t+=Math.max(.28,x.d*beat);}
+    const ms=(t-t0+.3)*1000;ignoreUntil=Date.now()+ms;
     clearTimeout(this.tm);this.tm=setTimeout(()=>{if(!this.on)return;this.listen=true;$('sMsg').textContent='À toi : rejoue la mélodie.';this.draw();},ms);},
   heard(midi){if(!this.on||!this.listen||Date.now()<ignoreUntil)return;
     const want=this.seq[this.pos].m,pc=((midi%12)+12)%12;
@@ -288,13 +288,13 @@ const SIM={
         if(!this.isRnd()&&this.n>=this.seq.length)return this.stop(`Bravo, tu as joué tout le morceau (${this.n} notes) !`,true);
         $('sMsg').className='msg ok';$('sMsg').textContent='Bravo ! On ajoute la suite…';this.draw();
         this.n=this.isRnd()?this.n+ +$('sStep').value:Math.min(this.seq.length,this.n+ +$('sStep').value);this.grow();
-        this.tm=setTimeout(()=>this.on&&this.round(),1300);}
+        this.tm=setTimeout(()=>this.on&&this.round(),650);}
       else this.draw();}
     else{this.lives--;this.listen=false;this.wrong={i:this.pos,pc};this.draw();this.wrong=null;
       const msg=`Note ${this.pos+1} : c'était ${M.FRS[want%12]}, tu as joué ${M.FRS[pc]}.`;
       if(this.lives<=0)return this.stop(msg+` Partie terminée : ${this.done||0} notes.`,false);
       $('sMsg').className='msg ko';$('sMsg').textContent=msg+' On réécoute le même passage.';$('sLives').textContent='♥'.repeat(this.lives)+'♡'.repeat(3-this.lives);
-      this.tm=setTimeout(()=>this.on&&this.round(),2200);}},
+      this.tm=setTimeout(()=>this.on&&this.round(),1500);}},
   draw(reveal){
     const help=$('sHelp').value,n=Math.max(this.n,this.on?1:0),show=reveal||help!=='none';
     let h='';for(let i=0;i<n;i++){const x=this.seq[i],nm=x?M.FRS[x.m%12]:'';
