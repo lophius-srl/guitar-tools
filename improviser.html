@@ -30,6 +30,18 @@
 .strum button.x{color:var(--out)}
 .strum button.now{background:var(--acc);border-color:var(--acc);color:#fff}.strum button.now small{color:#fff}
 @media(max-width:600px){.strum{gap:4px}.strum button{min-height:60px;font-size:22px}}
+.saverow{display:flex;gap:8px;flex-wrap:wrap}
+.saverow input{flex:1;min-width:200px;font:inherit;font-size:16px;color:var(--fg);padding:8px 12px;min-height:44px;border-radius:8px;border:1px solid var(--line2);background:var(--card)}
+.msg{min-height:1.2em;margin:6px 0 0;font-size:13px;color:var(--mut)}
+.saves{display:flex;flex-direction:column;gap:8px}
+.save{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+.save b{font-size:15px}.save small{color:var(--mut);font-size:12px;grid-column:1}
+.save .acts{grid-row:1/span 2;grid-column:2;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.save .acts button{font-size:13px;padding:6px 10px;min-height:36px}
+.save .acts button.danger{color:var(--out)}
+.save.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.saves .none{color:var(--mut);font-size:14px;margin:0}
+@media(max-width:600px){.save{grid-template-columns:minmax(0,1fr)}.save .acts{grid-row:auto;grid-column:1;justify-content:flex-start}}
 #custom{font:inherit;font-size:16px;color:var(--fg);padding:8px 12px;min-height:40px;border-radius:8px;border:1px solid var(--line2);background:var(--card);width:100%;min-width:220px}
 </style></head><body><main>
 <p class="brand">Guitar tools</p>
@@ -60,6 +72,13 @@
     </div>
   </div>
   <div class="prog" id="prog"></div>
+</div>
+
+<div class="card" id="savesCard">
+  <h2>Mes grilles enregistrées <small>gardées sur cet appareil · « Lien » pour les ouvrir ailleurs</small></h2>
+  <div class="saverow"><input id="saveName" type="text" placeholder="Nom (ex. : Intro Lam, blues du dimanche…)" autocomplete="off"><button class="pri" id="saveBtn">Enregistrer</button></div>
+  <p class="msg" id="saveMsg"></p>
+  <div class="saves" id="saves"></div>
 </div>
 
 <div class="card" id="strumCard" hidden>
@@ -255,5 +274,47 @@ let T=null;$('custom').addEventListener('input',()=>{clearTimeout(T);T=setTimeou
 $('pos').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;POS=+b.dataset.p;drawNeck();});
 let RW=null;new ResizeObserver(()=>{const w=$('neck').clientWidth;if(RW!==null&&(w<560)!==(RW<560))drawNeck();RW=w;}).observe($('neck'));
 buildProg();drawNeck();drawStrum();
+
+// ---------- Grilles enregistrées (sur l'appareil) et liens de partage ----------
+const ROOTSH=M.SH;
+function currentConfig(name){
+  const p=$('preset').value,useText=p==='acc'||p==='custom';
+  return {name,root:+$('root').value,mode:$('mode').value,preset:useText?'custom':p,custom:useText?PROG.map(c=>M.chordName(c,ROOTSH)).join(' '):'',
+    style:$('style').value,bpm:+$('bpm').value,bars:+$('bars').value,drums:$('drums').checked,scale:$('scale').value,
+    strumOn:$('strumOn').checked,selfStrum:$('selfStrum').checked,pattern:PAT.join(''),ts:Date.now()};
+}
+function applyConfig(c){
+  const was=playing;if(was)stopP();
+  $('root').value=String(c.root);$('mode').value=c.mode;fillPresets();$('preset').value=String(c.preset);$('custom').value=c.custom||'';
+  $('style').value=c.style;$('bpm').value=String(c.bpm);$('bars').value=String(c.bars);$('drums').checked=c.drums;$('scale').value=c.scale||'penta';
+  $('strumOn').checked=!!c.strumOn;$('selfStrum').checked=!!c.selfStrum;PAT=(c.pattern||STRUMS[0][1]).split('');
+  const k=STRUMS.findIndex(x=>x[1]===PAT.join(''));if(k<0)STRUMS[STRUMS.length-1][1]=PAT.join('');$('strumPre').value=String(k>=0?k:STRUMS.length-1);
+  POS=0;buildProg();save();drawNeck();drawStrum();
+}
+function summary(c){const k=c.root+(c.mode==='min'?12:0),nm=M.names(c.root,c.mode==='min',fr());
+  let chords;if(c.preset==='custom')chords=M.parseGrid(c.custom||'');else{const pr=PRESETS[c.mode][+c.preset];chords=pr?pr[1].map(([iv,q])=>({r:(c.root+iv)%12,q})):[];}
+  const st=STRUMS.find(x=>x[1]===c.pattern);
+  return `${M.kName(k,fr())} · ${chords.slice(0,8).map(x=>M.chordName(x,nm)).join(' ')}${chords.length>8?'…':''} · ${c.bpm} bpm${c.strumOn?` · ${st&&st[0]!=='Personnalisé'?st[0].split(' :')[0]:'rythme perso'}`:''}`;}
+const saves=()=>M.get('gt.improSaves',[]);
+let ACTIVE=null,CONFIRM=null;
+function drawSaves(){const L=saves();
+  $('saves').innerHTML=L.length?L.map((c,i)=>`<div class="save ${ACTIVE===i?'on':''}"><b>${c.name.replace(/</g,'&lt;')}</b><small>${summary(c)}</small><span class="acts"><button data-load="${i}">Charger</button><button data-share="${i}">Lien</button><button class="danger" data-del="${i}">${CONFIRM===i?'Confirmer ?':'Supprimer'}</button></span></div>`).join(''):'<p class="none">Rien d\'enregistré pour l\'instant. Règle une grille, un tempo et un rythme, donne-lui un nom, puis « Enregistrer ».</p>';}
+function msg(t){$('saveMsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>$('saveMsg').textContent='',4000);}
+$('saveBtn').onclick=()=>{const name=$('saveName').value.trim()||`${M.kName(key(),fr())} · ${new Date().toLocaleDateString('fr-BE')}`;
+  const L=saves(),i=L.findIndex(c=>c.name===name),cfg=currentConfig(name);
+  if(i>=0){L[i]=cfg;ACTIVE=i;msg(`« ${name} » mis à jour.`);}else{L.unshift(cfg);ACTIVE=0;msg(`« ${name} » enregistré.`);}
+  M.set('gt.improSaves',L);$('saveName').value='';drawSaves();};
+$('saveName').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveBtn').click();});
+$('saves').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const L=saves();
+  if(b.dataset.load!=null){const i=+b.dataset.load;applyConfig(L[i]);ACTIVE=i;CONFIRM=null;$('saveName').value=L[i].name;msg(`« ${L[i].name} » chargé.`);drawSaves();}
+  else if(b.dataset.del!=null){const i=+b.dataset.del;if(CONFIRM!==i){CONFIRM=i;drawSaves();return;}const n=L[i].name;L.splice(i,1);M.set('gt.improSaves',L);CONFIRM=null;ACTIVE=null;msg(`« ${n} » supprimé.`);drawSaves();}
+  else if(b.dataset.share!=null){const c=L[+b.dataset.share],url=location.origin+location.pathname+'?cfg='+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(c)))));
+    try{if(navigator.share){await navigator.share({title:c.name,url});msg('Lien partagé.');}else{await navigator.clipboard.writeText(url);msg('Lien copié : ouvre-le sur un autre appareil pour retrouver cette grille.');}}
+    catch(err){if(err&&err.name==='AbortError')return;try{await navigator.clipboard.writeText(url);msg('Lien copié.');}catch(e2){window.prompt('Copie ce lien :',url);}}}});
+// Ouverture d'un lien partagé : on charge la grille et on propose de l'enregistrer
+(()=>{const q=new URLSearchParams(location.search).get('cfg');if(!q)return;
+  try{const c=JSON.parse(decodeURIComponent(escape(atob(q))));applyConfig(c);$('saveName').value=c.name||'';msg('Grille reçue par lien : touche « Enregistrer » pour la garder sur cet appareil.');}catch(e){msg('Ce lien ne contient pas de grille lisible.');}
+  history.replaceState(null,'',location.pathname);})();
+drawSaves();
 }
 </script></body></html>
