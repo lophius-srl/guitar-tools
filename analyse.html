@@ -311,7 +311,7 @@ function drawJourney(){
   const hi=vert?Math.min(15,Math.max(7,...secs.map(x=>x.p+4))):15,nCols=hi-first+1;
   const nm=names(kRoot(key),kMin(key));
   // a = axe des cases, b = axe des cordes
-  const fw=vert?40:46,sh=vert?42:28,lab=16,openC=lab+18,nut=lab+34,b0=vert?118:112;
+  const fw=vert?40:46,sh=vert?42:28,lab=16,openC=lab+18,nut=lab+34,b0=vert?56:58;
   const fretA=f=>f===0?openC:nut+(f-first+0.5)*fw,aEnd=nut+nCols*fw;
   const Bs=s=>b0+(vert?(5-s):s)*sh,bEnd=b0+5*sh,bMid=b0+2.5*sh;
   const XY=(a,b)=>vert?[b,a]:[a,b];
@@ -338,12 +338,6 @@ function drawJourney(){
   for(let s=0;s<6;s++){const bb=Bs(s);g+=line(nut,bb,aEnd,bb,`stroke="var(--str)" stroke-width="${0.8+s*0.3}"`);
     g+=text(lab-6,bb+4,SN[s],`font-size="11" text-anchor="middle" fill="var(--mut)"`);}
   for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f))g+=text(fretA(f),bEnd+(vert?32:30),f,`font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}"`);
-  // flèches entre positions (côté opposé aux numéros de case)
-  for(let i=1;i<secs.length;i++){const p0=secs[i-1].p,p1=secs[i].p;if(p0===p1)continue;
-    const z0=zone(p0),z1=zone(p1),c0=(z0[0]+z0[1])/2+(p1>p0?8:-8),c1=(z1[0]+z1[1])/2+(p1>p0?-8:8),lvl=(i-1)%3,bb=b0-46,lift=bb-14-lvl*20;
-    const[x0,y0]=XY(c0,bb),[x1,y1]=XY(c1,bb),[xm,ym]=XY((c0+c1)/2,lift);
-    g+=`<path d="M ${x0} ${y0} Q ${xm} ${ym} ${x1} ${y1}" fill="none" stroke="var(--root)" stroke-width="2.2" stroke-linecap="round" marker-end="url(#jar)"/>`;
-    const[tx,ty]=XY((c0+c1)/2,(bb+lift)/2-5);g+=`<text x="${tx}" y="${ty}" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--root)">m. ${secs[i].a+1}</text>`;}
   // notes jouées, avec leur nom, dans la couleur de leur position
   order.forEach(p=>{const seen=new Set(),c=colOf(p);let gg=`<g class="jz jn-${p}" data-p="${p}">`;
     secs.filter(x=>x.p===p).forEach(x=>x.notes.forEach(n=>{const k=n.s+'-'+n.f;if(seen.has(k))return;seen.add(k);
@@ -544,7 +538,7 @@ function run(){
   });
   // Le parcours de la main sur tout le manche
   JOURNEY={secs:secs.filter(x=>x.notes&&x.notes.length),key:G,scale:gk.scale};
-  out.insertAdjacentHTML('beforeend',`<div class="card" id="journey"><h2>Le parcours de la main <small>toutes les positions du morceau, dans l'ordre</small></h2><ol class="jlist">${JOURNEY.secs.map((x,i)=>`<li data-p="${x.p}" tabindex="0"><b class="jn" style="background:${JCOL[[...new Set(JOURNEY.secs.map(y=>y.p))].indexOf(x.p)%JCOL.length]}">${i+1}</b><span><b>Position ${ROM[x.p]||x.p}</b><small>mesures ${x.a+1}${x.b>x.a?' à '+(x.b+1):''}</small></span></li>`).join('')}</ol><p class="muted" style="font-size:13px;margin:0 0 8px">Passe la souris ou touche une position (dans la liste ou sur le manche) pour la mettre en évidence.</p><div class="fit" id="jneck"></div></div>`);
+  out.insertAdjacentHTML('beforeend',`<div class="card" id="journey"><h2>Le parcours de la main <small>les positions du morceau, numérotées dans l'ordre</small></h2><ol class="jlist">${JOURNEY.secs.map((x,i)=>`<li data-p="${x.p}" tabindex="0"><b class="jn" style="background:${JCOL[[...new Set(JOURNEY.secs.map(y=>y.p))].indexOf(x.p)%JCOL.length]}">${i+1}</b><span><b>Position ${ROM[x.p]||x.p}</b><small>mesures ${x.a+1}${x.b>x.a?' à '+(x.b+1):''}</small></span></li>`).join('')}</ol><p class="muted" style="font-size:13px;margin:0 0 8px">Passe la souris ou touche une position (dans la liste ou sur le manche) pour la mettre en évidence.</p><div class="fit" id="jneck"></div></div>`);
   drawJourney();
   const nPos=new Set(secs.filter(s=>ms.slice(s.a,s.b+1).some(m=>m.notes.length)).map(s=>s.p)).size;
   $('summary').hidden=false;
