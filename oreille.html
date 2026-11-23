@@ -14,6 +14,15 @@
 .slots span.ok{background:var(--ok);border:1px solid var(--ok);color:#fff}.slots span.ko{background:var(--out);border:1px solid var(--out);color:#fff}
 .slots span.cur{border:2px solid var(--acc);color:var(--acc)}
 .slots span.hint{color:var(--fg);font-weight:500;border-style:solid}
+.tab{margin-top:12px;font-variant-numeric:tabular-nums}
+.tab .sys{display:grid;margin:0 0 10px;width:max-content;max-width:100%}
+.tab .c{height:19px;width:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  background:linear-gradient(var(--str),var(--str)) center/100% 1px no-repeat}
+.tab .c.l{width:18px;background:none;color:var(--mut);font-weight:600;font-size:12px;justify-content:flex-start}
+.tab .c.bar{width:6px;background:linear-gradient(var(--str),var(--str)) center/1px 100% no-repeat,linear-gradient(var(--str),var(--str)) center/100% 1px no-repeat}
+.tab .c span{background:var(--card);padding:0 3px;border-radius:5px;line-height:17px}
+.tab .c span.ok{color:var(--ok)}.tab .c span.ko{background:var(--out);color:#fff}
+.tab .c span.cur{background:var(--acc);color:#fff}.tab .c span.fut{color:var(--mut);font-weight:500}
 .heard{font-size:13px;color:var(--mut);min-height:1.3em;margin:6px 0 0}
 .modes button{text-align:left;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-height:58px}
 .modes button b{font-size:15px}.modes button small{color:var(--mut);font-size:12px}
@@ -54,7 +63,7 @@
   <div class="fields" id="simFields" hidden>
     <label class="field">Mélodie <select id="sSong"></select></label>
     <label class="field">Allonger de <select id="sStep"><option value="1">1 note</option><option value="2">2 notes</option><option value="4">4 notes</option></select></label>
-    <label class="field">Aide <select id="sHelp"><option value="none">aucune</option><option value="names">noms des notes</option><option value="neck">notes sur le manche</option></select></label>
+    <label class="field">Aide <select id="sHelp"><option value="none">aucune</option><option value="names">noms des notes</option><option value="neck">notes sur le manche</option><option value="tab">tablature</option><option value="both">tablature + manche</option></select></label>
     <label class="field">Tempo <select id="sTempo"><option value="70">lent</option><option value="95">normal</option><option value="120">rapide</option></select></label>
   </div>
 </div>
@@ -72,6 +81,7 @@
   </div>
   <p class="prompt" id="sPrompt"></p>
   <div class="slots" id="sSlots"></div>
+  <div class="tab" id="sTab"></div>
   <div id="sNeck" style="margin-top:10px"></div>
   <p class="msg" id="sMsg"></p>
   <p class="heard" id="heard"></p>
@@ -168,17 +178,17 @@ $('answers').addEventListener('click',e=>{const b=e.target.closest('button');if(
 const SONGS=[
  ['rnd-penta','Notes au hasard (penta mineure)'],
  ['rnd-maj','Notes au hasard (gamme majeure)'],
- ['frere','Frère Jacques','C4/1 D4/1 E4/1 C4/1 C4/1 D4/1 E4/1 C4/1 E4/1 F4/1 G4/2 E4/1 F4/1 G4/2 G4/.5 A4/.5 G4/.5 F4/.5 E4/1 C4/1 G4/.5 A4/.5 G4/.5 F4/.5 E4/1 C4/1 C4/1 G3/1 C4/2 C4/1 G3/1 C4/2'],
- ['clair','Au clair de la lune','C4/1 C4/1 C4/1 D4/1 E4/2 D4/2 C4/1 E4/1 D4/1 D4/1 C4/4 C4/1 C4/1 C4/1 D4/1 E4/2 D4/2 C4/1 E4/1 D4/1 D4/1 C4/4 D4/1 D4/1 D4/1 D4/1 A3/2 A3/2 D4/1 C4/1 B3/1 A3/1 G3/4'],
- ['maman','Ah ! vous dirai-je, maman (Brille, brille, petite étoile)','C4/1 C4/1 G4/1 G4/1 A4/1 A4/1 G4/2 F4/1 F4/1 E4/1 E4/1 D4/1 D4/1 C4/2 G4/1 G4/1 F4/1 F4/1 E4/1 E4/1 D4/2 G4/1 G4/1 F4/1 F4/1 E4/1 E4/1 D4/2 C4/1 C4/1 G4/1 G4/1 A4/1 A4/1 G4/2 F4/1 F4/1 E4/1 E4/1 D4/1 D4/1 C4/2'],
- ['anniv','Joyeux anniversaire','G3/.75 G3/.25 A3/1 G3/1 C4/1 B3/2 G3/.75 G3/.25 A3/1 G3/1 D4/1 C4/2 G3/.75 G3/.25 G4/1 E4/1 C4/1 B3/1 A3/2 F4/.75 F4/.25 E4/1 C4/1 D4/1 C4/2'],
- ['vent','Vive le vent (Jingle Bells)','E4/1 E4/1 E4/2 E4/1 E4/1 E4/2 E4/1 G4/1 C4/1.5 D4/.5 E4/4 F4/1 F4/1 F4/1.5 F4/.5 F4/1 E4/1 E4/1 E4/.5 E4/.5 E4/1 D4/1 D4/1 E4/1 D4/2 G4/2'],
- ['joie','Ode à la joie (Beethoven)','E4/1 E4/1 F4/1 G4/1 G4/1 F4/1 E4/1 D4/1 C4/1 C4/1 D4/1 E4/1 E4/1.5 D4/.5 D4/2 E4/1 E4/1 F4/1 G4/1 G4/1 F4/1 E4/1 D4/1 C4/1 C4/1 D4/1 E4/1 D4/1.5 C4/.5 C4/2'],
- ['elise','La Lettre à Élise (Beethoven)','E4/.5 D#4/.5 E4/.5 D#4/.5 E4/.5 B3/.5 D4/.5 C4/.5 A3/1.5 C3/.5 E3/.5 A3/.5 B3/1.5 E3/.5 G#3/.5 B3/.5 C4/1.5 E3/.5 E4/.5 D#4/.5 E4/.5 D#4/.5 E4/.5 B3/.5 D4/.5 C4/.5 A3/1.5 C3/.5 E3/.5 A3/.5 B3/1.5 E3/.5 C4/.5 B3/.5 A3/2'],
- ['tetris','Korobeïniki (la musique de Tetris)','E4/1 B3/.5 C4/.5 D4/1 C4/.5 B3/.5 A3/1 A3/.5 C4/.5 E4/1 D4/.5 C4/.5 B3/1.5 C4/.5 D4/1 E4/1 C4/1 A3/1 A3/2 D4/1.5 F4/.5 A4/1 G4/.5 F4/.5 E4/1.5 C4/.5 E4/1 D4/.5 C4/.5 B3/1 B3/.5 C4/.5 D4/1 E4/1 C4/1 A3/1 A3/2'],
- ['saints','When the Saints Go Marching In','C4/1 E4/1 F4/1 G4/4 C4/1 E4/1 F4/1 G4/4 C4/1 E4/1 F4/1 G4/2 E4/2 C4/2 E4/2 D4/4 E4/1 E4/1 D4/1 C4/3 C4/1 E4/1 G4/2 G4/1 F4/3 E4/1 F4/1 G4/2 E4/2 C4/2 D4/2 C4/4'],
- ['grace','Amazing Grace','D3/1 G3/2 B3/.5 G3/.5 B3/2 A3/1 G3/2 E3/1 D3/2 D3/1 G3/2 B3/.5 G3/.5 B3/2 A3/1 D4/5 B3/1 D4/1.5 B3/.5 D4/.5 B3/.5 G3/2 D3/1 E3/1.5 G3/.5 G3/.5 E3/.5 D3/2 D3/1 G3/2 B3/.5 G3/.5 B3/2 A3/1 G3/5'],
- ['green','Greensleeves','A3/.5 C4/1 D4/.5 E4/.75 F4/.25 E4/.5 D4/1 B3/.5 G3/.75 A3/.25 B3/.5 C4/1 A3/.5 A3/.75 G#3/.25 A3/.5 B3/1 G#3/.5 E3/1 A3/.5 C4/1 D4/.5 E4/.75 F4/.25 E4/.5 D4/1 B3/.5 G3/.75 A3/.25 B3/.5 C4/.75 B3/.25 A3/.5 G#3/.75 F#3/.25 G#3/.5 A3/1.5']
+ ['frere','Frère Jacques','C4/1 D4/1 E4/1 C4/1 C4/1 D4/1 E4/1 C4/1 E4/1 F4/1 G4/2 E4/1 F4/1 G4/2 G4/.5 A4/.5 G4/.5 F4/.5 E4/1 C4/1 G4/.5 A4/.5 G4/.5 F4/.5 E4/1 C4/1 C4/1 G3/1 C4/2 C4/1 G3/1 C4/2',[4,0]],
+ ['clair','Au clair de la lune','C4/1 C4/1 C4/1 D4/1 E4/2 D4/2 C4/1 E4/1 D4/1 D4/1 C4/4 C4/1 C4/1 C4/1 D4/1 E4/2 D4/2 C4/1 E4/1 D4/1 D4/1 C4/4 D4/1 D4/1 D4/1 D4/1 A3/2 A3/2 D4/1 C4/1 B3/1 A3/1 G3/4',[4,0]],
+ ['maman','Ah ! vous dirai-je, maman (Brille, brille, petite étoile)','C4/1 C4/1 G4/1 G4/1 A4/1 A4/1 G4/2 F4/1 F4/1 E4/1 E4/1 D4/1 D4/1 C4/2 G4/1 G4/1 F4/1 F4/1 E4/1 E4/1 D4/2 G4/1 G4/1 F4/1 F4/1 E4/1 E4/1 D4/2 C4/1 C4/1 G4/1 G4/1 A4/1 A4/1 G4/2 F4/1 F4/1 E4/1 E4/1 D4/1 D4/1 C4/2',[4,0]],
+ ['anniv','Joyeux anniversaire','G3/.75 G3/.25 A3/1 G3/1 C4/1 B3/2 G3/.75 G3/.25 A3/1 G3/1 D4/1 C4/2 G3/.75 G3/.25 G4/1 E4/1 C4/1 B3/1 A3/2 F4/.75 F4/.25 E4/1 C4/1 D4/1 C4/2',[3,1]],
+ ['vent','Vive le vent (Jingle Bells)','E4/1 E4/1 E4/2 E4/1 E4/1 E4/2 E4/1 G4/1 C4/1.5 D4/.5 E4/4 F4/1 F4/1 F4/1.5 F4/.5 F4/1 E4/1 E4/1 E4/.5 E4/.5 E4/1 D4/1 D4/1 E4/1 D4/2 G4/2',[4,0]],
+ ['joie','Ode à la joie (Beethoven)','E4/1 E4/1 F4/1 G4/1 G4/1 F4/1 E4/1 D4/1 C4/1 C4/1 D4/1 E4/1 E4/1.5 D4/.5 D4/2 E4/1 E4/1 F4/1 G4/1 G4/1 F4/1 E4/1 D4/1 C4/1 C4/1 D4/1 E4/1 D4/1.5 C4/.5 C4/2',[4,0]],
+ ['elise','La Lettre à Élise (Beethoven)','E4/.5 D#4/.5 E4/.5 D#4/.5 E4/.5 B3/.5 D4/.5 C4/.5 A3/1.5 C3/.5 E3/.5 A3/.5 B3/1.5 E3/.5 G#3/.5 B3/.5 C4/1.5 E3/.5 E4/.5 D#4/.5 E4/.5 D#4/.5 E4/.5 B3/.5 D4/.5 C4/.5 A3/1.5 C3/.5 E3/.5 A3/.5 B3/1.5 E3/.5 C4/.5 B3/.5 A3/2',[3,1]],
+ ['tetris','Korobeïniki (la musique de Tetris)','E4/1 B3/.5 C4/.5 D4/1 C4/.5 B3/.5 A3/1 A3/.5 C4/.5 E4/1 D4/.5 C4/.5 B3/1.5 C4/.5 D4/1 E4/1 C4/1 A3/1 A3/2 D4/1.5 F4/.5 A4/1 G4/.5 F4/.5 E4/1.5 C4/.5 E4/1 D4/.5 C4/.5 B3/1 B3/.5 C4/.5 D4/1 E4/1 C4/1 A3/1 A3/2',[4,0]],
+ ['saints','When the Saints Go Marching In','C4/1 E4/1 F4/1 G4/4 C4/1 E4/1 F4/1 G4/4 C4/1 E4/1 F4/1 G4/2 E4/2 C4/2 E4/2 D4/4 E4/1 E4/1 D4/1 C4/3 C4/1 E4/1 G4/2 G4/1 F4/3 E4/1 F4/1 G4/2 E4/2 C4/2 D4/2 C4/4',null],
+ ['grace','Amazing Grace','D3/1 G3/2 B3/.5 G3/.5 B3/2 A3/1 G3/2 E3/1 D3/2 D3/1 G3/2 B3/.5 G3/.5 B3/2 A3/1 D4/5 B3/1 D4/1.5 B3/.5 D4/.5 B3/.5 G3/2 D3/1 E3/1.5 G3/.5 G3/.5 E3/.5 D3/2 D3/1 G3/2 B3/.5 G3/.5 B3/2 A3/1 G3/5',[3,1]],
+ ['green','Greensleeves','A3/.5 C4/1 D4/.5 E4/.75 F4/.25 E4/.5 D4/1 B3/.5 G3/.75 A3/.25 B3/.5 C4/1 A3/.5 A3/.75 G#3/.25 A3/.5 B3/1 G#3/.5 E3/1 A3/.5 C4/1 D4/.5 E4/.75 F4/.25 E4/.5 D4/1 B3/.5 G3/.75 A3/.25 B3/.5 C4/.75 B3/.25 A3/.5 G#3/.75 F#3/.25 G#3/.5 A3/1.5',[3,.5]]
 ];
 const LET={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 function parse(src){return src.trim().split(/\s+/).map(t=>{const[n,d]=t.split('/'),m=n.match(/^([A-G])([#b]?)(\d)$/);
@@ -201,7 +211,7 @@ const SIM={
   // Position conseillée sur le manche : la zone de 5 cases qui contient le plus de notes
   window(){const ms=this.isRnd()?this.rndPool():this.seq.map(x=>x.m);let best=0,bw=0;
     for(let w=0;w<=9;w++){const c=ms.filter(m=>M.OPEN.some(o=>{const f=m-o;return f===0||f>=w&&f<=w+4;})).length;if(c>best){best=c;bw=w;}}return bw;},
-  where(m){const w=this.win;let bs=null,bf=null;M.OPEN.forEach((o,s)=>{const f=m-o;if(f===0||f>=w&&f<=w+4){if(bf==null||Math.abs(f-(w+2))<Math.abs(bf-(w+2))){bs=s;bf=f;}}});
+  where(m){const w=this.win;let bs=null,bf=null;M.OPEN.forEach((o,s)=>{const f=m-o;const cost=f=>f===0?.5:Math.abs(f-(w+1.5));if(f===0||f>=w&&f<=w+4){if(bf==null||cost(f)<cost(bf)){bs=s;bf=f;}}});
     if(bs==null)M.OPEN.forEach((o,s)=>{const f=m-o;if(f>=0&&f<=15&&(bf==null||Math.abs(f-w)<Math.abs(bf-w))){bs=s;bf=f;}});return {s:bs,f:bf};},
   rndPool(){if(!this.pool){const k=Math.floor(Math.random()*12),sc=$('sSong').value==='rnd-penta'?[0,3,5,7,10]:M.MAJ;this.pool=[];for(let m=50;m<=72;m++)if(sc.includes((m-k+120)%12))this.pool.push(m);}return this.pool;},
   grow(){if(!this.isRnd())return;const p=this.rndPool();while(this.seq.length<this.n){const last=this.seq.length?p.indexOf(this.seq[this.seq.length-1].m):Math.floor(p.length/2);
@@ -243,14 +253,34 @@ const SIM={
       else h+=`<span class="${this.listen&&i===this.pos?'cur':''} ${show?'hint':''}">${show?nm:i+1}</span>`;}
     if(!this.on&&!reveal)h=this.isRnd()?'':`<span class="hint muted" style="border-style:dashed">${this.seq.length} notes à découvrir</span>`;
     $('sSlots').innerHTML=h;
+    this.drawTab(reveal);
     const el=$('sNeck');
-    if(help!=='neck'||!this.on&&!reveal){el.innerHTML='';return;}
+    if(!['neck','both'].includes(help)||!this.on&&!reveal){el.innerHTML='';return;}
     const vert=el.clientWidth<480,w=this.win,lo=Math.max(0,w-1),hi=Math.max(w+5,lo+5),dots=[],nxt=this.seq[Math.min(this.pos,this.n-1)];
     // les notes du passage en cours, la prochaine à jouer en couleur
     const seen=new Set();for(let i=0;i<this.n;i++){const x=this.seq[i],p=this.where(x.m),k=p.s+'-'+p.f;if(p.s==null||seen.has(k))continue;seen.add(k);
       const isN=this.listen&&x===nxt;dots.push({s:p.s,f:p.f,txt:M.FRS[x.m%12],fill:isN?'var(--acc)':'var(--card)',stroke:isN?'var(--acc)':'var(--str)',tc:isN?'#fff':'var(--fg)',fw:isN?700:500});}
     el.innerHTML=M.neck({lo,hi:Math.max(hi,...dots.map(d=>d.f)),vert,dots,box:{lo:w,hi:w+4}});
   }
+};
+// Tablature : les notes du passage en cours (tout le morceau avant de commencer), réparties en lignes
+SIM.drawTab=function(reveal){
+  const el=$('sTab'),help=$('sHelp').value;
+  if(!['tab','both'].includes(help)||!this.seq.length){el.innerHTML='';return;}
+  const n=this.on?this.n:this.seq.length,per=Math.max(6,Math.floor((el.clientWidth-20)/28)),cols=[];
+  let beat=0;
+  for(let i=0;i<n;i++){const x=this.seq[i],p=this.where(x.m);
+    let cls='fut';if(this.on||reveal){if(this.wrong&&i===this.wrong.i)cls='ko';else if(i<this.pos)cls='ok';else if(this.listen&&i===this.pos)cls='cur';else cls='';}
+    cols.push({s:p.s,f:p.f,cls});
+    // barre de mesure toutes les 4 temps (morceaux seulement)
+    beat+=x.d;const mt=this.song()[3];if(mt&&i<n-1&&Math.abs((beat-mt[1])/mt[0]-Math.round((beat-mt[1])/mt[0]))<1e-6&&beat>=mt[1])cols.push({bar:true});}
+  let h='';
+  for(let k=0;k<cols.length;k+=per){const part=cols.slice(k,k+per);
+    h+=`<div class="sys" style="grid-template-columns:18px repeat(${part.length},auto)">`;
+    for(let s=0;s<6;s++){h+=`<div class="c l">${M.SN[s]}</div>`;
+      part.forEach(c=>{h+=c.bar?'<div class="c bar"></div>':`<div class="c">${c.s===s?`<span class="${c.cls}">${c.f}</span>`:''}</div>`;});}
+    h+='</div>';}
+  el.innerHTML=h;
 };
 $('sGo').onclick=()=>{if(SIM.on){clearTimeout(SIM.tm);SIM.stop(`Partie arrêtée : ${SIM.done||0} notes.`,false);}else{SIM.done=0;SIM.start();}};
 $('sAgain').onclick=()=>{if(SIM.on){clearTimeout(SIM.tm);SIM.round();}};
