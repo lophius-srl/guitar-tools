@@ -169,6 +169,26 @@ M.snare=(t,vol=.35)=>{const c=M.audio(),n=c.createBufferSource(),g=c.createGain(
 M.hat=(t,vol=.12)=>{const c=M.audio(),n=c.createBufferSource(),g=c.createGain(),hp=c.createBiquadFilter();n.buffer=noiseBuf();hp.type='highpass';hp.frequency.value=7000;
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);n.connect(hp).connect(g).connect(master);n.start(t);n.stop(t+.06);};
 
+// ---------- Déblocage du son sur iPhone / iPad ----------
+// 1) Safari ne démarre le son qu'après un geste de l'utilisateur : au premier toucher, on crée et relance le contexte audio.
+// 2) Le bouton « silencieux » de l'iPhone coupe le son Web Audio : on passe la session en mode « lecture »
+//    (navigator.audioSession, iOS 16.4+) et on joue un court son muet en boucle via <audio>, ce qui a le même effet
+//    sur les versions plus anciennes. Ça vaut aussi pour les onglets qui ont leur propre moteur audio.
+let unlocked=false;
+function silentWavURL(){const n=800,b=new ArrayBuffer(44+n),v=new DataView(b),w=(o,t)=>[...t].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
+M.unlock=()=>{
+  try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}
+  try{const c=M.audio(),src=c.createBufferSource();src.buffer=c.createBuffer(1,1,22050);src.connect(c.destination);src.start(0);}catch(e){}
+  if(unlocked)return;unlocked=true;
+  try{const a=document.createElement('audio');a.src=silentWavURL();a.loop=true;a.setAttribute('playsinline','');a.volume=.01;const p=a.play();if(p&&p.catch)p.catch(()=>{unlocked=false;});}catch(e){unlocked=false;}
+};
+['touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>M.unlock(),{capture:true,passive:true}));
+// Au retour dans l'onglet, Safari suspend parfois le son : on le relance au prochain toucher
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ctx&&ctx.state!=='running')ctx.resume();});
+
 // Mémoire du navigateur (sans erreur si elle est indisponible)
 M.get=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}};
 M.set=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
