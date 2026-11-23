@@ -47,7 +47,7 @@ Jeux d'une minute : « Quelle note ? » (réponse au clic ou en jouant, au micro
 
 ## Oreille
 
-Intervalles (montants, descendants, ensemble), types d'accords, degrés après une cadence, et « Simon » : rejouer à la guitare une mélodie qui s'allonge à chaque tour (notes au hasard ou airs connus du domaine public), vérifiée au micro, avec 3 vies, aide (noms, tablature, manche) et records ; niveaux, série, statistiques par réponse.
+Intervalles (montants, descendants, ensemble), types d'accords, degrés après une cadence, et « Simon » : rejouer à la guitare une mélodie qui s'allonge à chaque tour (notes au hasard, airs connus du domaine public ou tes propres tablatures collées), vérifiée au micro, avec 3 vies, aide (noms, tablature, manche) et records ; niveaux, série, statistiques par réponse.
 
 ## CAGED
 

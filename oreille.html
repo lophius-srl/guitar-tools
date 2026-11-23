@@ -23,6 +23,9 @@
 .tab .c span{background:var(--card);padding:0 3px;border-radius:5px;line-height:17px}
 .tab .c span.ok{color:var(--ok)}.tab .c span.ko{background:var(--out);color:#fff}
 .tab .c span.cur{background:var(--acc);color:#fff}.tab .c span.fut{color:var(--mut);font-weight:500}
+#eTab{width:100%;font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;padding:10px;border-radius:8px;border:1px solid var(--line2);background:var(--card);color:var(--fg);white-space:pre;overflow:auto}
+#eName{font:inherit;font-size:15px;padding:8px 10px;min-height:40px;border-radius:8px;border:1px solid var(--line2);background:var(--card);color:var(--fg);width:100%}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
 .heard{font-size:13px;color:var(--mut);min-height:1.3em;margin:6px 0 0}
 .modes button{text-align:left;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-height:58px}
 .modes button b{font-size:15px}.modes button small{color:var(--mut);font-size:12px}
@@ -79,6 +82,20 @@
     <div class="stat">Vies<b id="sLives">♥♥♥</b></div>
     <div class="stat">Record<b id="sBest">–</b></div>
   </div>
+  <div id="sEdit" hidden>
+    <div class="fields" style="margin-bottom:8px">
+      <label class="field" style="flex:1 1 220px">Nom de la chanson <input id="eName" type="text" placeholder="Ma chanson"></label>
+    </div>
+    <textarea id="eTab" rows="8" spellcheck="false" placeholder="Colle ta tablature ici (6 lignes e B G D A E, avec des tirets)…"></textarea>
+    <p class="muted" id="eInfo" style="font-size:13px;margin:6px 0"></p>
+    <div class="acts">
+      <button class="pri" id="eSave">Enregistrer</button>
+      <button id="eFromTab">Reprendre la tab de Tab → Gamme</button>
+      <button id="eDel" hidden>Supprimer</button>
+      <button id="eClose" hidden>Fermer</button>
+    </div>
+  </div>
+  <div class="acts" id="sOwn" hidden style="margin:0 0 6px"><button id="eOpen">Modifier la tablature</button></div>
   <p class="prompt" id="sPrompt"></p>
   <div class="slots" id="sSlots"></div>
   <div class="tab" id="sTab"></div>
@@ -160,7 +177,7 @@ function newQ(){
   $('again').hidden=false;$('go').textContent='Question suivante';play();
 }
 function renderStats(){$('statsSub').textContent=mode==='rep'?'meilleure longueur par mélodie':'par réponse, depuis le début';
-  if(mode==='rep'){const b=ST.simon||{};$('stats').innerHTML=SONGS.map(([k,n,src])=>{const len=k.startsWith('rnd')?null:parse(src).length,x=b[k]||0,p=len?Math.round(x/len*100):Math.min(100,x*5);
+  if(mode==='rep'){const b=ST.simon||{};$('stats').innerHTML=allSongs().map(sg=>{const[k,n]=sg,len=k.startsWith('rnd')?null:seqOf(sg).length,x=b[k]||0,p=len?Math.round(x/len*100):Math.min(100,x*5);
     return `<div><span><b>${n.replace(/ \(.*\)/,'')}</b></span><span class="muted">${x?(len?`${x} / ${len} notes${x>=len?' · complet !':''}`:`${x} notes`):'pas encore joué'}</span><span class="meter"><i style="width:${p}%"></i></span></div>`;}).join('');return;}
   const st=ST.stats[mode]||{};
   $('stats').innerHTML=set().map(a=>{const x=st[a]||[0,0],p=x[1]?Math.round(x[0]/x[1]*100):null;return `<div><span><b>${labelOf(a)[0]}</b></span><span class="muted">${p==null?'pas encore essayé':p+' % · '+x[1]+' essai'+(x[1]>1?'s':'')}</span><span class="meter"><i style="width:${p||0}%"></i></span></div>`;}).join('');}
@@ -193,24 +210,57 @@ const SONGS=[
 const LET={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 function parse(src){return src.trim().split(/\s+/).map(t=>{const[n,d]=t.split('/'),m=n.match(/^([A-G])([#b]?)(\d)$/);
   return {m:12*(+m[3]+1)+LET[m[1]]+(m[2]==='#'?1:m[2]==='b'?-1:0),d:+d};});}
-$('sSong').innerHTML='<optgroup label="Simon classique">'+SONGS.slice(0,2).map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')+
-  '</optgroup><optgroup label="Morceaux connus">'+SONGS.slice(2).map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')+'</optgroup>';
+// Tes chansons : tablatures collées, gardées dans le navigateur
+const own=()=>M.get('gt.simonSongs',[]);
+const allSongs=()=>SONGS.concat(own().map(o=>[o.id,o.name,null,null,o.tab]));
+const seqOf=sg=>sg[4]!=null?parseTab(sg[4]):parse(sg[2]);
+// Tablature → suite de notes. Une colonne = un instant ; s'il y a plusieurs notes (accord), on garde la plus aiguë (la mélodie).
+// Durée = écart entre deux notes dans la mesure ; une barre de mesure est retenue après la dernière note de chaque mesure.
+function parseTab(txt){
+  const blocks=[];let cur=[];
+  for(const l of txt.split(/\r?\n/)){const m=l.match(/^\s*[A-Ga-g][#b]?\s*([|:\-].*)$/);
+    if(m&&/-/.test(m[1])){cur.push(m[1]);if(cur.length===6){blocks.push(cur);cur=[];}}else cur=[];}
+  const out=[],isD=c=>c>='0'&&c<='9';
+  for(const b of blocks){
+    const segs=b.map(l=>l.replace(/:/g,'|').split('|'));
+    segs.forEach(sg=>{if(sg.length&&!sg[0].trim())sg.shift();if(sg.length&&!sg[sg.length-1].trim())sg.pop();});
+    const nM=Math.max(...segs.map(sg=>sg.length));
+    for(let i=0;i<nM;i++){
+      const cols={};let len=0;
+      segs.forEach((sg,st)=>{const seg=sg[i]||'';len=Math.max(len,seg.length);
+        for(let c=0;c<seg.length;c++)if(isD(seg[c])&&!isD(seg[c-1])){const f=+(seg[c]+(isD(seg[c+1])?seg[c+1]:''));const m=M.OPEN[st]+f;
+          if(!cols[c]||m>cols[c].m)cols[c]={m,s:st,f,c};}});
+      const ns=Object.values(cols).sort((a,b)=>a.c-b.c);if(!ns.length)continue;
+      const gaps=ns.slice(1).map((x,k)=>x.c-ns[k].c),unit=gaps.length?gaps.slice().sort((a,b)=>a-b)[gaps.length>>1]:4;
+      ns.forEach((x,k)=>{const g=k<ns.length-1?gaps[k]:Math.max(unit,len-x.c);out.push({m:x.m,s:x.s,f:x.f,d:Math.max(.25,Math.min(3,Math.round(g/unit*2)/4))});});
+      out[out.length-1].bar=true;
+    }
+  }
+  if(out.length)delete out[out.length-1].bar;
+  return out;
+}
+function fillSongs(){const o=own();
+  $('sSong').innerHTML='<optgroup label="Simon classique">'+SONGS.slice(0,2).map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')+
+  '</optgroup><optgroup label="Morceaux connus">'+SONGS.slice(2).map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('')+'</optgroup>'+
+  '<optgroup label="Mes chansons">'+o.map(x=>`<option value="${x.id}">${x.name.replace(/</g,'&lt;')}</option>`).join('')+'<option value="new">+ Ajouter une tablature…</option></optgroup>';}
+fillSongs();
 const SS=M.get('gt.simonSet',{song:'frere',step:'2',help:'names',tempo:'95'});
-$('sSong').value=SS.song;$('sStep').value=SS.step;$('sHelp').value=SS.help;$('sTempo').value=SS.tempo;
+$('sSong').value=SS.song;if(!$('sSong').value)$('sSong').value='frere';$('sStep').value=SS.step;$('sHelp').value=SS.help;$('sTempo').value=SS.tempo;
 const SIM={
   seq:[],n:0,pos:0,lives:3,on:false,listen:false,key:null,win:null,pool:null,
-  song(){return SONGS.find(s=>s[0]===$('sSong').value);},
+  song(){return allSongs().find(s=>s[0]===$('sSong').value)||SONGS[2];},
   isRnd(){return $('sSong').value.startsWith('rnd');},
   best(){return (ST.simon||{})[$('sSong').value]||0;},
   saveSet(){M.set('gt.simonSet',{song:$('sSong').value,step:$('sStep').value,help:$('sHelp').value,tempo:$('sTempo').value});},
-  reset(){this.on=false;this.listen=false;this.seq=this.isRnd()?[]:parse(this.song()[2]);this.n=0;this.pos=0;this.lives=3;this.win=this.window();
+  reset(){this.on=false;this.listen=false;this.seq=this.isRnd()?[]:seqOf(this.song());this.n=0;this.pos=0;this.lives=3;this.win=this.window();
     $('sGo').textContent='Commencer';$('sAgain').hidden=true;$('sMsg').textContent='';$('sLen').textContent='–';$('sLives').textContent='♥♥♥';$('sBest').textContent=this.best()||'–';
     $('sPrompt').textContent=this.isRnd()?'Comme au jeu Simon : écoute, rejoue à la guitare, et la suite s\'allonge à chaque tour. Trois erreurs et c\'est fini.':
-      `Le morceau se dévoile petit à petit : écoute le début, rejoue-le à la guitare, puis on ajoute la suite. ${this.seq.length} notes en tout. Trois vies.`;
+      `${isOwn()?'Ta chanson':'Le morceau'} se dévoile petit à petit : écoute le début, rejoue-le à la guitare, puis on ajoute la suite. ${this.seq.length} notes en tout. Trois vies.`;
     this.draw();renderStats();},
   // Position conseillée sur le manche : la zone de 5 cases qui contient le plus de notes
   window(){const ms=this.isRnd()?this.rndPool():this.seq.map(x=>x.m);let best=0,bw=0;
     for(let w=0;w<=9;w++){const c=ms.filter(m=>M.OPEN.some(o=>{const f=m-o;return f===0||f>=w&&f<=w+4;})).length;if(c>best){best=c;bw=w;}}return bw;},
+  whereN(x){return x.s!=null?{s:x.s,f:x.f}:this.where(x.m);},
   where(m){const w=this.win;let bs=null,bf=null;M.OPEN.forEach((o,s)=>{const f=m-o;const cost=f=>f===0?.5:Math.abs(f-(w+1.5));if(f===0||f>=w&&f<=w+4){if(bf==null||cost(f)<cost(bf)){bs=s;bf=f;}}});
     if(bs==null)M.OPEN.forEach((o,s)=>{const f=m-o;if(f>=0&&f<=15&&(bf==null||Math.abs(f-w)<Math.abs(bf-w))){bs=s;bf=f;}});return {s:bs,f:bf};},
   rndPool(){if(!this.pool){const k=Math.floor(Math.random()*12),sc=$('sSong').value==='rnd-penta'?[0,3,5,7,10]:M.MAJ;this.pool=[];for(let m=50;m<=72;m++)if(sc.includes((m-k+120)%12))this.pool.push(m);}return this.pool;},
@@ -219,7 +269,7 @@ const SIM={
   async start(){M.audio();
     if(!M.mic.on){$('micBtn').click();for(let i=0;i<150&&!M.mic.on&&!M.mic.err;i++)await new Promise(r=>setTimeout(r,100));
       if(!M.mic.on){$('sMsg').className='msg ko';$('sMsg').textContent='Ce jeu a besoin du micro : autorise-le puis recommence.';return;}}
-    this.pool=null;this.seq=this.isRnd()?[]:parse(this.song()[2]);this.win=this.window();this.on=true;this.lives=3;
+    this.pool=null;this.seq=this.isRnd()?[]:seqOf(this.song());this.win=this.window();this.on=true;this.lives=3;
     this.n=this.isRnd()?1:Math.min(2,this.seq.length);this.grow();$('sGo').textContent='Abandonner';$('sAgain').hidden=false;this.round();},
   stop(msg,ok){this.on=false;this.listen=false;$('sLives').textContent='♥'.repeat(Math.max(0,this.lives))+'♡'.repeat(3-Math.max(0,this.lives));$('sGo').textContent='Rejouer';$('sAgain').hidden=true;
     const score=ok?this.n:this.done||0;
@@ -258,9 +308,9 @@ const SIM={
     if(!['neck','both'].includes(help)||!this.on&&!reveal){el.innerHTML='';return;}
     const vert=el.clientWidth<480,w=this.win,lo=Math.max(0,w-1),hi=Math.max(w+5,lo+5),dots=[],nxt=this.seq[Math.min(this.pos,this.n-1)];
     // les notes du passage en cours, la prochaine à jouer en couleur
-    const seen=new Set();for(let i=0;i<this.n;i++){const x=this.seq[i],p=this.where(x.m),k=p.s+'-'+p.f;if(p.s==null||seen.has(k))continue;seen.add(k);
+    const seen=new Set();for(let i=0;i<this.n;i++){const x=this.seq[i],p=this.whereN(x),k=p.s+'-'+p.f;if(p.s==null||seen.has(k))continue;seen.add(k);
       const isN=this.listen&&x===nxt;dots.push({s:p.s,f:p.f,txt:M.FRS[x.m%12],fill:isN?'var(--acc)':'var(--card)',stroke:isN?'var(--acc)':'var(--str)',tc:isN?'#fff':'var(--fg)',fw:isN?700:500});}
-    el.innerHTML=M.neck({lo,hi:Math.max(hi,...dots.map(d=>d.f)),vert,dots,box:{lo:w,hi:w+4}});
+    const fs=dots.map(d=>d.f),L=Math.min(lo,...fs),Hh=Math.max(hi,...fs,L+5),own=isOwn();el.innerHTML=M.neck({lo:L,hi:Hh,vert,dots,box:own?null:{lo:w,hi:w+4}});
   }
 };
 // Tablature : les notes du passage en cours (tout le morceau avant de commencer), réparties en lignes
@@ -269,24 +319,43 @@ SIM.drawTab=function(reveal){
   if(!['tab','both'].includes(help)||!this.seq.length){el.innerHTML='';return;}
   const n=this.on?this.n:this.seq.length,per=Math.max(6,Math.floor((el.clientWidth-20)/28)),cols=[];
   let beat=0;
-  for(let i=0;i<n;i++){const x=this.seq[i],p=this.where(x.m);
+  for(let i=0;i<n;i++){const x=this.seq[i],p=this.whereN(x);
     let cls='fut';if(this.on||reveal){if(this.wrong&&i===this.wrong.i)cls='ko';else if(i<this.pos)cls='ok';else if(this.listen&&i===this.pos)cls='cur';else cls='';}
     cols.push({s:p.s,f:p.f,cls});
     // barre de mesure toutes les 4 temps (morceaux seulement)
-    beat+=x.d;const mt=this.song()[3];if(mt&&i<n-1&&Math.abs((beat-mt[1])/mt[0]-Math.round((beat-mt[1])/mt[0]))<1e-6&&beat>=mt[1])cols.push({bar:true});}
-  let h='';
-  for(let k=0;k<cols.length;k+=per){const part=cols.slice(k,k+per);
+    beat+=x.d;const mt=this.song()[3];if(x.bar&&i<n-1)cols.push({bar:true});else if(mt&&i<n-1&&Math.abs((beat-mt[1])/mt[0]-Math.round((beat-mt[1])/mt[0]))<1e-6&&beat>=mt[1])cols.push({bar:true});}
+  let h='';const per2=Math.ceil(cols.length/Math.ceil(cols.length/per));
+  for(let k=0;k<cols.length;k+=per2){const part=cols.slice(k,k+per2);
     h+=`<div class="sys" style="grid-template-columns:18px repeat(${part.length},auto)">`;
     for(let s=0;s<6;s++){h+=`<div class="c l">${M.SN[s]}</div>`;
       part.forEach(c=>{h+=c.bar?'<div class="c bar"></div>':`<div class="c">${c.s===s?`<span class="${c.cls}">${c.f}</span>`:''}</div>`;});}
     h+='</div>';}
   el.innerHTML=h;
 };
+// ---------- Éditeur de tes chansons ----------
+const isOwn=()=>/^u/.test($('sSong').value);
+function editor(open){const v=$('sSong').value,o=own().find(x=>x.id===v),ed=v==='new'||open;
+  $('sEdit').hidden=!ed;$('sOwn').hidden=ed||!isOwn();$('eDel').hidden=!o;$('eClose').hidden=!o;
+  if(ed){$('eName').value=o?o.name:'';$('eTab').value=o?o.tab:'';tabInfo();}
+  $('simon').querySelectorAll('.hud').forEach(h=>h.hidden=v==='new');}
+function tabInfo(){const t=$('eTab').value.trim();if(!t){$('eInfo').textContent='Les accords (plusieurs notes en même temps) sont réduits à leur note la plus aiguë, qui porte en général la mélodie.';return;}
+  const n=parseTab(t).length;$('eInfo').textContent=n?`${n} notes trouvées.`:'Aucune note trouvée : il faut 6 lignes qui commencent par e B G D A E, avec des tirets et des numéros de case.';}
+$('eTab').oninput=tabInfo;
+$('eFromTab').onclick=()=>{let t='',ti='';try{t=localStorage.getItem('gt.tab')||'';ti=localStorage.getItem('gt.title')||'';}catch(e){}
+  if(!t){$('eInfo').textContent='Rien dans Tab → Gamme pour le moment.';return;}$('eTab').value=t;if(!$('eName').value&&ti)$('eName').value=ti;tabInfo();};
+$('eSave').onclick=()=>{const tab=$('eTab').value,n=parseTab(tab).length;if(!n){tabInfo();return;}
+  const name=$('eName').value.trim()||'Ma chanson',list=own(),v=$('sSong').value;let o=list.find(x=>x.id===v);
+  if(o){o.name=name;o.tab=tab;}else{o={id:'u'+Date.now().toString(36),name,tab};list.push(o);}
+  M.set('gt.simonSongs',list);fillSongs();$('sSong').value=o.id;SIM.saveSet();SIM.reset();editor(false);};
+$('eDel').onclick=()=>{const v=$('sSong').value,o=own().find(x=>x.id===v);if(!o||!confirm(`Supprimer « ${o.name} » ?`))return;
+  M.set('gt.simonSongs',own().filter(x=>x.id!==v));if(ST.simon)delete ST.simon[v];save();fillSongs();$('sSong').value='frere';SIM.saveSet();SIM.reset();editor(false);};
+$('eOpen').onclick=()=>editor(true);$('eClose').onclick=()=>editor(false);
 $('sGo').onclick=()=>{if(SIM.on){clearTimeout(SIM.tm);SIM.stop(`Partie arrêtée : ${SIM.done||0} notes.`,false);}else{SIM.done=0;SIM.start();}};
 $('sAgain').onclick=()=>{if(SIM.on){clearTimeout(SIM.tm);SIM.round();}};
-['sSong','sStep','sHelp','sTempo'].forEach(id=>$(id).onchange=()=>{SIM.saveSet();if(id==='sSong'||!SIM.on){clearTimeout(SIM.tm);SIM.reset();}else SIM.draw();});
+['sSong','sStep','sHelp','sTempo'].forEach(id=>$(id).onchange=()=>{if(id==='sSong')editor(false);if($('sSong').value==='new'){clearTimeout(SIM.tm);SIM.on=false;$('sSlots').innerHTML='';$('sTab').innerHTML='';$('sNeck').innerHTML='';$('sPrompt').textContent='Colle la tablature de ta chanson : Simon te la fera jouer petit à petit.';return;}SIM.saveSet();if(id==='sSong'||!SIM.on){clearTimeout(SIM.tm);SIM.reset();}else SIM.draw();});
 window.__simHeard=m=>SIM.heard(m);
 M.micButton($('micBtn'),{onNote:m=>SIM.heard(m),onFrame:o=>{$('heard').textContent=o.midi!=null&&Date.now()>=ignoreUntil?`J'entends : ${M.FRS[((o.midi%12)+12)%12]}`:'';},onStop:()=>{$('heard').textContent='';}});
+editor(false);
 $('modes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;save();setMode();});
 $('level').onchange=()=>{save();setMode();};$('dir').onchange=save;
 setMode();
