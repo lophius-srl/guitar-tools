@@ -37,7 +37,7 @@ Colle une grille (« Mim Sol Ré Lam » ou « Em G D Am », même avec les parol
 
 ## Improviser
 
-Boucle d'accompagnement (accords, basse, batterie de synthèse) : grilles toutes faites, grille de l'onglet Accords ou grille libre, trois styles, tempo. Sur le manche : la gamme (pentatonique ou complète), par position, et les notes de l'accord en cours en orange. En option : un rythme de grattage (↓ ↑ ✕ sur 8 croches), au choix ou modifiable case par case, suivi en direct, avec la possibilité de couper la guitare de la boucle pour gratter soi-même. Les réglages (tonalité, grille, style, tempo, rythme) s'enregistrent sous un nom, sur l'appareil, et se partagent par un lien qui les recharge ailleurs.
+Boucle d'accompagnement (accords, basse, batterie de synthèse), en majeur, mineur et dans les modes (dorien, mixolydien, phrygien, lydien, locrien, mineur harmonique et mélodique, phrygien dominant), avec des grilles typiques de chaque mode et sa note caractéristique mise en évidence : grilles toutes faites, grille de l'onglet Accords ou grille libre, trois styles, tempo. Sur le manche : la gamme (pentatonique ou complète), par position, et les notes de l'accord en cours en orange. En option : un rythme de grattage (↓ ↑ ✕ sur 8 croches), au choix ou modifiable case par case, suivi en direct, avec la possibilité de couper la guitare de la boucle pour gratter soi-même. Les réglages (tonalité, grille, style, tempo, rythme) s'enregistrent sous un nom, sur l'appareil, et se partagent par un lien qui les recharge ailleurs.
 
 ## Manche
 
