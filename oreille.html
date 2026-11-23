@@ -124,7 +124,7 @@
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
 <script src="assets/nav.js?v=8"></script>
-<script src="assets/music.js?v=5"></script>
+<script src="assets/music.js?v=6"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -281,9 +281,10 @@ const SIM={
     for(let i=0;i<this.n;i++){const x=this.seq[i];M.pluck(t,x.m,.32,Math.min(1,x.d*beat+.2));t+=Math.max(.28,x.d*beat);}
     const ms=(t-t0+.3)*1000;ignoreUntil=Date.now()+ms;
     clearTimeout(this.tm);this.tm=setTimeout(()=>{if(!this.on)return;this.listen=true;$('sMsg').textContent='À toi : rejoue la mélodie.';this.draw();},ms);},
-  heard(midi){if(!this.on||!this.listen||Date.now()<ignoreUntil)return;
-    const want=this.seq[this.pos].m,pc=((midi%12)+12)%12;
-    if(pc===((want%12)+12)%12){this.pos++;
+  heard(midi,o){if(!this.on||!this.listen||Date.now()<ignoreUntil)return;
+    const want=this.seq[this.pos].m,pc=((midi%12)+12)%12,mf=o&&o.mf!=null?o.mf:midi,dist=Math.abs(((mf-want)%12+18)%12-6);
+    // à l'octave près, et tolérant pour une corde un peu fausse ou un vibrato (± 2/3 de demi-ton)
+    if(dist<=.65){this.pos++;
       if(this.pos>=this.n){this.done=this.n;this.listen=false;
         if(!this.isRnd()&&this.n>=this.seq.length)return this.stop(`Bravo, tu as joué tout le morceau (${this.n} notes) !`,true);
         $('sMsg').className='msg ok';$('sMsg').textContent='Bravo ! On ajoute la suite…';this.draw();
@@ -354,7 +355,7 @@ $('sGo').onclick=()=>{if(SIM.on){clearTimeout(SIM.tm);SIM.stop(`Partie arrêtée
 $('sAgain').onclick=()=>{if(SIM.on){clearTimeout(SIM.tm);SIM.round();}};
 ['sSong','sStep','sHelp','sTempo'].forEach(id=>$(id).onchange=()=>{if(id==='sSong')editor(false);if($('sSong').value==='new'){clearTimeout(SIM.tm);SIM.on=false;$('sSlots').innerHTML='';$('sTab').innerHTML='';$('sNeck').innerHTML='';$('sPrompt').textContent='Colle la tablature de ta chanson : Simon te la fera jouer petit à petit.';return;}SIM.saveSet();if(id==='sSong'||!SIM.on){clearTimeout(SIM.tm);SIM.reset();}else SIM.draw();});
 window.__simHeard=m=>SIM.heard(m);
-M.micButton($('micBtn'),{onNote:m=>SIM.heard(m),onFrame:o=>{$('heard').textContent=o.midi!=null&&Date.now()>=ignoreUntil?`J'entends : ${M.FRS[((o.midi%12)+12)%12]}`:'';},onStop:()=>{$('heard').textContent='';}});
+M.micButton($('micBtn'),{onNote:(m,o)=>SIM.heard(m,o),onFrame:o=>{$('heard').textContent=o.midi!=null&&Date.now()>=ignoreUntil?`J'entends : ${M.FRS[((o.midi%12)+12)%12]}`:'';},onStop:()=>{$('heard').textContent='';}});
 editor(false);
 $('modes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;save();setMode();});
 $('level').onchange=()=>{save();setMode();};$('dir').onchange=save;

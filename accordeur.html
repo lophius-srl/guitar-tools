@@ -52,7 +52,7 @@
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Le son du micro reste dans ton navigateur : rien n'est enregistré ni envoyé.</footer>
 </main>
 <script src="assets/nav.js?v=8"></script>
-<script src="assets/music.js?v=5"></script>
+<script src="assets/music.js?v=6"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -100,8 +100,8 @@ function reset(){tuned=new Set();lock=null;smooth=null;lastDet=null;drawStrings(
 
 function show(o){
   const g=$('gauge');
-  if(!o||!o.f){if(smooth!=null&&o&&o.rms<.004){needle().setAttribute('opacity','.35');}
-    if(!o||o.rms<.004){$('hz').textContent='';$('hint').textContent=M.mic.on?'Joue une corde à vide…':'Le micro est coupé.';$('hint').className='hint';g.classList.remove('ok');}return;}
+  if(!o||!o.f){if(smooth!=null&&o&&o.rms<.0025){needle().setAttribute('opacity','.35');}
+    if(!o||o.rms<.0025){$('hz').textContent='';$('hint').textContent=M.mic.on?'Joue une corde à vide…':'Le micro est coupé.';$('hint').className='hint';g.classList.remove('ok');}return;}
   const t=strs(),mf=M.freqToMidi(o.f);
   // corde visée : celle choisie, sinon la plus proche de la note entendue
   let i=lock;if(i==null){i=0;t.forEach((m,k)=>{if(Math.abs(mf-m)<Math.abs(mf-t[i]))i=k;});}

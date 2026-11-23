@@ -201,29 +201,36 @@ M.mic={on:false,stream:null,src:null,an:null,timer:null,
     this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     this.src=c.createMediaStreamSource(this.stream);this.an=c.createAnalyser();this.an.fftSize=4096;this.src.connect(this.an);
     this.on=true;this.cb=cb;this.opt=opt;this.an.fftSize=2048;
-    const buf=new Float32Array(2048),hist=[];let held=null,cnt=0,silent=0,armed=true,slow=0,raw=null,rawN=0,skip=0,lastOn=0,lastEmit=-9,fr=0;
-    // Toutes les 20 ms : volume sur les 20 dernières ms (pour sentir l'attaque tout de suite),
-    // hauteur sur les 43 dernières ms. Une note est annoncée dès que 2 mesures de suite sont d'accord.
+    const buf=new Float32Array(2048),hist=[],recent=[],recHf=[];
+    let held=null,silent=0,armed=true,raw=[],skip=0,lastOn=-9,lastEmit=-9,fr=0,floor=.002;
+    // Toutes les 20 ms : volume sur les 20 dernières ms (pour sentir l'attaque tout de suite), hauteur sur les 43 dernières ms.
+    // Une note est annoncée quand 2 mesures de suite donnent la même hauteur (à un tiers de demi-ton près).
     this.timer=setInterval(()=>{
       this.an.getFloatTimeDomainData(buf);const N=buf.length,K=Math.min(N,Math.round(c.sampleRate*.02));
-      let rms=0;for(let i=N-K;i<N;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/K);
-      const thr=this.opt.thr||.008;let out={f:0,midi:null,cents:0,rms,clar:0};
-      // attaque : le volume monte nettement au-dessus de sa moyenne récente → nouvelle note, même si c'est la même hauteur
-      // après une attaque, on oublie la hauteur précédente et on saute une mesure (encore mêlée à l'ancienne note)
-      fr++;if(rms>slow*1.3+thr*.5&&rms>thr*1.5&&fr-lastOn>4&&fr-lastEmit>4){armed=true;raw=null;rawN=0;skip=1;lastOn=fr;}slow=slow*.8+rms*.2;
-      let rmidi=null;
+      let rms=0,hf=0;for(let i=N-K;i<N;i++){rms+=buf[i]*buf[i];const d=buf[i]-buf[i-1];hf+=d*d;}rms=Math.sqrt(rms/K);hf=Math.sqrt(hf/K);fr++;
+      // bruit de fond estimé en continu : le seuil s'adapte à la pièce et au micro
+      floor=rms<floor?floor*.9+rms*.1:floor*.998+rms*.002;
+      const thr=Math.max(this.opt.thr||.0015,floor*2.5);let out={f:0,midi:null,mf:null,cents:0,rms,clar:0};
+      // attaque : le volume dépasse nettement le minimum des 60 dernières ms → nouvelle note, même à la même hauteur
+      const mn=recent.length?Math.min(...recent):0;recent.push(rms);if(recent.length>3)recent.shift();
+      // …ou le bruit aigu du médiator / de l'ongle apparaît d'un coup (utile quand le téléphone compresse le volume)
+      const mh=recHf.length?Math.min(...recHf):0;recHf.push(hf);if(recHf.length>3)recHf.shift();
+      if((rms>mn*1.3+thr*.3||hf>mh*1.8+thr*.1)&&rms>thr*1.5&&fr-lastOn>4&&fr-lastEmit>4){armed=true;raw=[];skip=1;lastOn=fr;}
+      let rmf=null;
       if(rms>thr){const r=yin(buf,c.sampleRate);
-        if(r){const mf0=M.freqToMidi(r.f);rmidi=Math.round(mf0);
+        if(r){rmf=M.freqToMidi(r.f);
           let f=r.f;hist.push(f);if(hist.length>5)hist.shift();const med=hist.slice().sort((a,b)=>a-b)[hist.length>>1];
           // affichage (accordeur) : une valeur aberrante isolée est remplacée par la médiane
           if(hist.length>2&&Math.abs(1200*Math.log2(f/med))>80)f=med;
-          const mf=M.freqToMidi(f),midi=Math.round(mf);out={f,midi,cents:(mf-midi)*100,rms,clar:r.clar};}}
-      if(rmidi==null){if(++silent>3){held=null;cnt=0;armed=true;hist.length=0;raw=null;rawN=0;}}
+          const mf=M.freqToMidi(f),midi=Math.round(mf);out={f,midi,mf,cents:(mf-midi)*100,rms,clar:r.clar};}}
+      if(rmf==null){if(++silent>3){held=null;armed=true;hist.length=0;raw=[];}}
       else{silent=0;
-        // reconnaissance de note : hauteur brute, sans lissage, pour réagir vite
-        if(skip>0)skip--;else{if(rmidi===raw)rawN++;else{raw=rmidi;rawN=1;}}
-        if(rawN>=2){if(raw!==held){held=raw;armed=true;}
-          if(armed&&this.opt.onNote){armed=false;lastEmit=fr;this.opt.onNote(raw,out);}}}
+        if(skip>0)skip--;
+        else{if(raw.length&&Math.abs(rmf-raw[raw.length-1])>.35)raw=[];raw.push(rmf);
+          if(raw.length>=2){const avg=(raw[raw.length-1]+raw[raw.length-2])/2,m=Math.round(avg);
+            // changement de hauteur sans nouvelle attaque (liaison, glissé) : c'est aussi une nouvelle note
+            if(held==null||Math.abs(avg-held)>.6){if(held!=null)armed=true;held=avg;}
+            if(armed&&this.opt.onNote){armed=false;lastEmit=fr;held=avg;this.opt.onNote(m,Object.assign({},out,{mf:avg}));}}}}
       try{this.cb&&this.cb(out);}catch(e){console.error(e);}
     },20);
     return true;},
