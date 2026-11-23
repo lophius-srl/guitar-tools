@@ -56,6 +56,9 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .cand .rel{font-size:12px;color:var(--mut);min-height:1.3em;line-height:1.3}
 .cand.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .resetk{background:none;border:0;padding:0;min-height:0;color:var(--acc);font-size:13px;text-decoration:underline;cursor:pointer}
+.jlist{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}
+.jn{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px}
+.jarr{color:var(--root);font-weight:700}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .bar{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:4px 8px;font-size:15px}
 .bar small{color:var(--mut);font-size:11px}
@@ -276,7 +279,44 @@ function relation(a,b){
   if(kMin(a)&&kMin(b)&&((rb-ra+12)%12===7||(ra-rb+12)%12===7))return 'tonalité voisine (une note change)';
   return '';
 }
-let FORCED=null,PERLINE=4;
+let FORCED=null,PERLINE=4,JOURNEY=null;
+// Manche complet (cases 0 à 15) : chaque position utilisée, numérotée dans l'ordre du morceau,
+// des flèches pour les déplacements et les notes jouées. Vertical sur téléphone, comme dans Gammes.
+function drawJourney(){
+  const el=$('jneck');if(!el||!JOURNEY)return;
+  const vert=el.clientWidth<560,{secs}=JOURNEY,first=1,hi=15,nCols=hi-first+1;
+  // axe des cases (a) et axe des cordes (b), puis conversion en x/y selon l'orientation
+  const fw=vert?34:44,sh=vert?40:26,openW=28;
+  const a0=vert?40:56,b0=vert?54:100;           // marge avant le sillet / avant la 1re corde
+  const A=f=>f===0?a0-openW/2:a0+openW/2+(f-first+0.5)*fw-openW/2+openW/2;
+  const nut=a0+openW/2,fretX=f=>f===0?a0:nut+(f-first+0.5)*fw,aEnd=nut+nCols*fw;
+  const Bs=s=>b0+(vert?(5-s):s)*sh,bEnd=b0+5*sh;
+  const XY=(a,b)=>vert?[b,a]:[a,b];
+  const W=vert?bEnd+70:aEnd+12,H=vert?aEnd+12:bEnd+30;
+  const boxA=p=>p===1?[a0-openW/2,fretX(4)+fw/2]:[fretX(p)-fw/2,fretX(p+3)+fw/2];
+  let g='';
+  const byP={};secs.forEach((x,i)=>(byP[x.p]=byP[x.p]||[]).push(i+1));
+  Object.keys(byP).forEach(p=>{const[q0,q1]=boxA(+p),[x,y]=XY(q0,b0-12),[w,h]=vert?[5*sh+24,q1-q0]:[q1-q0,5*sh+24];
+    g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="var(--accL)" stroke="var(--acc)" stroke-width="1.5"/>`;});
+  for(let k=0;k<=nCols;k++){const aa=nut+k*fw,[x1,y1]=XY(aa,b0),[x2,y2]=XY(aa,bEnd);g+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--line2)" stroke-width="${k===0?5:1.3}"/>`;}
+  for(let s=0;s<6;s++){const bb=Bs(s),[x1,y1]=XY(nut,bb),[x2,y2]=XY(aEnd,bb);g+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--str)" stroke-width="${0.8+s*0.3}"/>`;
+    const[lx,ly]=vert?[bb,a0-openW/2-8]:[a0-openW-12,bb+4];g+=`<text x="${lx}" y="${ly}" font-size="11" text-anchor="middle" fill="var(--mut)">${SN[s]}</text>`;}
+  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f)){const[x,y]=vert?[bEnd+22,fretX(f)+4]:[fretX(f),bEnd+24];g+=`<text x="${x}" y="${y}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}">${f}</text>`;}
+  const seen=new Set();secs.forEach(x=>x.notes.forEach(n=>{const k=n.s+'-'+n.f;if(seen.has(k))return;seen.add(k);
+    const[cx,cy]=XY(fretX(n.f),Bs(n.s));g+=`<circle cx="${cx}" cy="${cy}" r="6" fill="var(--acc)"/>`;}));
+  // flèches : au-dessus du manche (horizontal) ou à droite (vertical)
+  for(let i=1;i<secs.length;i++){const p0=secs[i-1].p,p1=secs[i].p;if(p0===p1)continue;
+    const c0=(boxA(p0)[0]+boxA(p0)[1])/2,c1=(boxA(p1)[0]+boxA(p1)[1])/2,lift=14+((i-1)%3)*10;
+    if(vert){const xb=bEnd+14,xm=xb+lift*1.6;g+=`<path d="M ${xb} ${c0} Q ${xm} ${(c0+c1)/2} ${xb} ${c1}" fill="none" stroke="var(--root)" stroke-width="2" marker-end="url(#jar)"/>`;}
+    else{const yb=b0-36,ym=yb-lift*1.6;g+=`<path d="M ${c0} ${yb} Q ${(c0+c1)/2} ${ym} ${c1} ${yb}" fill="none" stroke="var(--root)" stroke-width="2" marker-end="url(#jar)"/>`;}}
+  // numéros des sections (pastilles) : à gauche du manche en vertical, sous les flèches en horizontal
+  Object.entries(byP).forEach(([p,ids])=>{const[q0,q1]=boxA(+p),c=(q0+q1)/2,t=ids.join(' · '),w=Math.max(22,t.length*7+10);
+    const[bx,by]=vert?[Math.max(2,b0-16-w),c-10]:[c-w/2,b0-12-10];
+    g+=`<rect x="${bx}" y="${by}" width="${w}" height="20" rx="10" fill="var(--acc)"/><text x="${bx+w/2}" y="${by+14}" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">${t}</text>`;});
+  const defs=`<defs><marker id="jar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--root)"/></marker></defs>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" font-family="system-ui,sans-serif" style="width:100%;height:auto;display:block;margin:auto;${vert?`max-width:${Math.round(W*1.15)}px`:''}">${defs}${g}</svg>`;
+}
+
 // ---------- Positions pensées pour tout le morceau ----------
 // Coût d'une position pour une mesure. Si la tablature n'est pas réadaptée,
 // toute note hors de la position compte comme un déplacement de la main.
@@ -438,7 +478,7 @@ function run(){
       ns.forEach(n=>{notesAll.push({...n,o:n.o+off});if(!iv.includes((n.pc-root+12)%12))outS.add(n.pc);if(!inBox(n.f,p))offPos.push(n);});
       off+=maxO;
     });
-    MEAS[si]=notesAll.map(n=>({o:n.o,midi:OPEN[n.s]+n.f}));
+    MEAS[si]=notesAll.map(n=>({o:n.o,midi:OPEN[n.s]+n.f}));sec.notes=notesAll;
     // tablature de la section, 4 mesures par ligne
     // autant de mesures par ligne que la largeur le permet (4 au maximum) : pas de défilement sur téléphone
     const segLen=Math.max(...segs.map(sg=>Math.max(...sg.map(r=>r.length))))+1,avail=Math.floor((out.clientWidth-40)/(window.innerWidth<=600?8.45:8.45));
@@ -460,6 +500,10 @@ function run(){
       ${notes.length?`<div class="expl">${notes.join('<br>')}</div>`:''}
     </div>`);
   });
+  // Le parcours de la main sur tout le manche
+  JOURNEY={secs:secs.filter(x=>x.notes&&x.notes.length),key:G,scale:gk.scale};
+  out.insertAdjacentHTML('beforeend',`<div class="card" id="journey"><h2>Le parcours de la main <small>toutes les positions du morceau, dans l'ordre</small></h2><div class="jlist">${JOURNEY.secs.map((x,i)=>`<span class="bar"><b class="jn">${i+1}</b>Mesures ${x.a+1}${x.b>x.a?'–'+(x.b+1):''} · Position ${ROM[x.p]||x.p}</span>`).join('<span class="jarr">→</span>')}</div><div class="fit" id="jneck"></div></div>`);
+  drawJourney();
   const nPos=new Set(secs.filter(s=>ms.slice(s.a,s.b+1).some(m=>m.notes.length)).map(s=>s.p)).size;
   $('summary').hidden=false;
   const manual=FORCED!=null&&FORCED!==auto;
@@ -477,7 +521,7 @@ try{const f=localStorage.getItem('gt.analyse.fix');if(f!==null)$('fix').checked=
 $('fix').onchange=()=>{try{localStorage.setItem('gt.analyse.fix',$('fix').checked?'1':'0');}catch(e){}run();};
 $('go').onclick=run;
 // Rotation du téléphone / redimensionnement : on recalcule la mise en page des tablatures
-let RW=null;new ResizeObserver(()=>{const w=$('out').clientWidth;if(RW!==null&&Math.abs(w-RW)>40){clearTimeout(window.__rz);window.__rz=setTimeout(run,200);}RW=w;}).observe($('out'));
+let RW=null;new ResizeObserver(()=>{drawJourney();const w=$('out').clientWidth;if(RW!==null&&Math.abs(w-RW)>40){clearTimeout(window.__rz);window.__rz=setTimeout(run,200);}RW=w;}).observe($('out'));
 $('summary').addEventListener('click',e=>{const b=e.target.closest('.cand,.cand-reset');if(!b)return;FORCED=b.dataset.k==='auto'?null:+b.dataset.k;run();});
 $('title').addEventListener('input',()=>{try{localStorage.setItem('gt.title',$('title').value);}catch(e){}});
 let TT=null;$('tab').addEventListener('input',()=>{FORCED=null;try{localStorage.setItem('gt.tab',$('tab').value);}catch(e){}clearTimeout(TT);TT=setTimeout(run,400);});
