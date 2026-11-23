@@ -200,7 +200,7 @@ M.mic={on:false,stream:null,src:null,an:null,timer:null,
     const c=M.audio();
     this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     this.src=c.createMediaStreamSource(this.stream);this.an=c.createAnalyser();this.an.fftSize=4096;this.src.connect(this.an);
-    this.on=true;this.cb=cb;this.opt=opt;this.an.fftSize=2048;
+    this.on=true;this.cb=cb;this.opt=opt;this.an.fftSize=2048;M.awake('mic',true);
     const buf=new Float32Array(2048),hist=[],recent=[],recHf=[];
     let held=null,silent=0,armed=true,raw=[],skip=0,lastOn=-9,lastEmit=-9,fr=0,floor=.002;
     // Toutes les 20 ms : volume sur les 20 dernières ms (pour sentir l'attaque tout de suite), hauteur sur les 43 dernières ms.
@@ -235,7 +235,7 @@ M.mic={on:false,stream:null,src:null,an:null,timer:null,
     },20);
     return true;},
   stop(){if(!this.on)return;clearInterval(this.timer);try{this.src.disconnect();}catch(e){}this.stream.getTracks().forEach(t=>t.stop());
-    this.on=false;this.cb=null;try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}}
+    this.on=false;this.cb=null;M.awake('mic',false);try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}}
 };
 // Petit bouton micro réutilisable : M.micButton(btn,{onFrame,onNote,onStart,onStop})
 M.micButton=(btn,h)=>{btn.classList.add('mic');const base=btn.dataset.label||btn.textContent;btn.innerHTML=`${base} <span class="lvl"><i></i></span>`;
@@ -267,6 +267,19 @@ M.unlock=()=>{
 ['touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>M.unlock(),{capture:true,passive:true}));
 // Au retour dans l'onglet, Safari suspend parfois le son : on le relance au prochain toucher
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ctx&&ctx.state!=='running')ctx.resume();});
+
+// ---------- Écran allumé ----------
+// Pendant qu'on joue (micro, métronome, boucle d'impro…), l'écran ne se met pas en veille.
+// M.awake('metro',true) / M.awake('metro',false) ; relancé automatiquement au retour dans l'onglet.
+const wakeKeys=new Set();let wl=null,wlBusy=false;
+async function wakeApply(){
+  if(wakeKeys.size&&!document.hidden){if(!wl&&!wlBusy&&navigator.wakeLock){wlBusy=true;try{wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;});}catch(e){}wlBusy=false;
+      if(!wakeKeys.size&&wl){wl.release().catch(()=>{});wl=null;}}}
+  else if(wl){const w=wl;wl=null;w.release().catch(()=>{});}
+}
+M.awake=(k,on)=>{if(on)wakeKeys.add(k);else wakeKeys.delete(k);wakeApply();};
+M.isAwake=()=>!!wl;
+document.addEventListener('visibilitychange',wakeApply);
 
 // Mémoire du navigateur (sans erreur si elle est indisponible)
 M.get=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}};

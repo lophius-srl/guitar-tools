@@ -30,4 +30,19 @@
   var target=function(g,i){var l=last[i];var t=g.tools.filter(function(x){return norm(x.href)===l;})[0]||g.tools[0];return url(t.href);};
   nav.innerHTML='<div class="groups">'+GROUPS.map(function(g,i){return '<a href="'+target(g,i)+'"'+(i===cur?' class="on"':'')+'>'+g.label+'</a>';}).join('')+'</div>'+
     '<div class="subtabs">'+GROUPS[cur].tools.map(function(t){return '<a href="'+url(t.href)+'"'+(norm(t.href)===here?' aria-current="page"':'')+'>'+t.label+'</a>';}).join('')+'</div>';
+
+  // Application installable (écran d'accueil) et utilisable hors ligne
+  if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+  var standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  var prompt=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();prompt=e;});
+  var foot=document.querySelector('footer');
+  if(foot&&!standalone){
+    var a=document.createElement('a');a.href='#';a.textContent='Installer l\'app sur ton téléphone';a.style.marginLeft='6px';
+    var tip=document.createElement('div');tip.hidden=true;tip.style.cssText='margin-top:8px;font-size:13px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px';
+    var ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    tip.innerHTML=ios?'Sur iPhone / iPad, dans <b>Safari</b> : touche <b>Partager</b> (le carré avec une flèche), puis <b>« Sur l\'écran d\'accueil »</b>. Guitar tools s\'ouvrira en plein écran, comme une app, et marchera même sans réseau.':
+      'Dans le menu du navigateur (⋮), choisis <b>« Installer l\'application »</b> ou <b>« Ajouter à l\'écran d\'accueil »</b>. Guitar tools s\'ouvrira en plein écran, comme une app, et marchera même sans réseau.';
+    a.onclick=function(e){e.preventDefault();if(prompt){prompt.prompt();prompt=null;}else tip.hidden=!tip.hidden;};
+    foot.appendChild(document.createTextNode(' ·'));foot.appendChild(a);foot.appendChild(tip);
+  }
 })();

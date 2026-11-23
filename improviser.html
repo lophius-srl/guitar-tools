@@ -3,7 +3,14 @@
 <title>Improviser · Guitar tools</title>
 <meta name="description" content="Une boucle d'accompagnement (accords, basse, batterie) dans la tonalité de ton choix, avec la gamme et les notes de l'accord en cours sur le manche.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=9">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#c2552d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Guitar tools">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/style.css?v=10">
 <style>
 .stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
 @media(max-width:600px){.stage{grid-template-columns:minmax(0,1fr)}}
@@ -116,8 +123,8 @@
 
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=8"></script>
-<script src="assets/music.js?v=6"></script>
+<script src="assets/nav.js?v=9"></script>
+<script src="assets/music.js?v=7"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -311,8 +318,8 @@ function showNow(){
   $('cn').textContent=M.chordName(c,nm);$('dg').hidden=false;$('dg').textContent=romanM(c).n;$('nx').textContent=PROG.length>1?`puis ${M.chordName(n,nm)}`:'';
   document.querySelectorAll('#prog span').forEach(e=>e.classList.toggle('on',+e.dataset.i===cur));
 }
-function start(){M.audio();playing=true;step=0;nextT=M.now()+.12;tick();timer=setInterval(tick,40);$('play').textContent='Stop';}
-function stopP(){strumSlot(-1);playing=false;clearInterval(timer);timer=null;cur=-1;$('play').textContent='Lancer';$('cn').textContent='–';$('dg').hidden=true;$('nx').textContent='';
+function start(){M.audio();M.awake('impro',true);playing=true;step=0;nextT=M.now()+.12;tick();timer=setInterval(tick,40);$('play').textContent='Stop';}
+function stopP(){strumSlot(-1);M.awake('impro',false);playing=false;clearInterval(timer);timer=null;cur=-1;$('play').textContent='Lancer';$('cn').textContent='–';$('dg').hidden=true;$('nx').textContent='';
   document.querySelectorAll('#prog span.on,#beats i.on').forEach(e=>e.classList.remove('on'));drawNeck();}
 $('play').onclick=()=>playing?stopP():start();
 

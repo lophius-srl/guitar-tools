@@ -3,7 +3,14 @@
 <title>Manche · Guitar tools</title>
 <meta name="description" content="Petits jeux chronométrés pour mémoriser les notes du manche de guitare.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=9">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#c2552d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Guitar tools">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/style.css?v=10">
 <style>
 :root{--ok:#2f7d4f;--okL:#e2f1e7}
 @media(prefers-color-scheme:dark){:root{--ok:#5fbf86;--okL:#17301f}}
@@ -69,8 +76,8 @@
 
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=8"></script>
-<script src="assets/music.js?v=6"></script>
+<script src="assets/nav.js?v=9"></script>
+<script src="assets/music.js?v=7"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -113,10 +120,10 @@ function next(){
     target={pc};found=new Set();todo=cs.filter(c=>c.pc===pc).map(c=>c.s+'-'+c.f);$('q').textContent=`Trouve tous les ${nm()[pc]}`;}
   lock=false;draw();
 }
-function start(){save();run=true;left=60;score=0;tries=0;miss={};target=null;$('result').innerHTML='';$('msg').textContent='';$('msg').className='msg';
+function start(){save();M.awake('game',true);run=true;left=60;score=0;tries=0;miss={};target=null;$('result').innerHTML='';$('msg').textContent='';$('msg').className='msg';
   $('score').textContent=0;$('time').textContent=60;$('go').textContent='Arrêter';answers();next();
   clock=setInterval(()=>{left--;$('time').textContent=left;if(left<=0)stop(true);},1000);}
-function stop(done){run=false;clearInterval(clock);$('go').textContent='Recommencer';target=null;draw();
+function stop(done){run=false;M.awake('game',false);clearInterval(clock);$('go').textContent='Recommencer';target=null;draw();
   if(done){const b=M.get('gt.mancheBest',{});const rec=score>(b[key()]||0);if(rec){b[key()]=score;M.set('gt.mancheBest',b);}$('best').textContent=best();
     const worst=Object.entries(miss).sort((a,c)=>c[1]-a[1]).slice(0,3).map(([pc])=>nm()[pc]);
     $('q').textContent=rec?'Nouveau record !':'Terminé';

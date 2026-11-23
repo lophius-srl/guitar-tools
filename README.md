@@ -65,6 +65,11 @@ Accordeur au micro (algorithme YIN), plusieurs accordages (standard, Drop D, ope
 
 Tap tempo, mesures 2/4 à 12/8, subdivisions, accent, mesures muettes, et entraîneur de tempo qui accélère par paliers jusqu'à un objectif.
 
+## Application
+
+- Installable sur l'écran d'accueil (manifest + service worker `sw.js`) : plein écran, et utilisable hors ligne.
+- L'écran reste allumé pendant qu'on joue (micro, métronome, boucle d'impro, jeux) grâce à l'API Wake Lock.
+
 ## Structure
 
 - Site statique, sans build : chaque outil est une page HTML autonome.
