@@ -96,10 +96,36 @@
 const $=id=>document.getElementById(id);
 // Grilles en degrés : [intervalle depuis la tonique, qualité]
 const PRESETS={
-  maj:[['I – V – vi – IV (pop)',[[0,''],[7,''],[9,'m'],[5,'']]],['I – IV – V – IV (rock)',[[0,''],[5,''],[7,''],[5,'']]],['I – vi – IV – V (années 50)',[[0,''],[9,'m'],[5,''],[7,'']]],
-       ['ii – V – I (jazz)',[[2,'m7'],[7,'7'],[0,'maj7'],[0,'maj7']]],['Blues 12 mesures',[[0,'7'],[0,'7'],[0,'7'],[0,'7'],[5,'7'],[5,'7'],[0,'7'],[0,'7'],[7,'7'],[5,'7'],[0,'7'],[7,'7']]],['Un seul accord (I)',[[0,'']]]],
-  min:[['i – VI – III – VII',[[0,'m'],[8,''],[3,''],[10,'']]],['i – VII – VI – V (andalouse)',[[0,'m'],[10,''],[8,''],[7,'']]],['i – iv – v – i',[[0,'m'],[5,'m'],[7,'m'],[0,'m']]],
-       ['Blues mineur 12 mesures',[[0,'m7'],[0,'m7'],[0,'m7'],[0,'m7'],[5,'m7'],[5,'m7'],[0,'m7'],[0,'m7'],[8,'7'],[7,'7'],[0,'m7'],[7,'7']]],['Un seul accord (i)',[[0,'m']]]]
+  maj:[
+    ['I – V – vi – IV (la grille pop n°1)',[[0,''],[7,''],[9,'m'],[5,'']]],
+    ['vi – IV – I – V (pop, version mélancolique)',[[9,'m'],[5,''],[0,''],[7,'']]],
+    ['I – IV – V – IV (rock, folk)',[[0,''],[5,''],[7,''],[5,'']]],
+    ['I – vi – IV – V (années 50, doo-wop)',[[0,''],[9,'m'],[5,''],[7,'']]],
+    ['I – IV – vi – V (pop)',[[0,''],[5,''],[9,'m'],[7,'']]],
+    ['I – V – IV – V (folk, country)',[[0,''],[7,''],[5,''],[7,'']]],
+    ['I – IV (deux accords)',[[0,''],[5,'']]],
+    ['I – bVII – IV – I (rock mixolydien)',[[0,''],[10,''],[5,''],[0,'']]],
+    ['I – bVI – bVII – I (épique)',[[0,''],[8,''],[10,''],[0,'']]],
+    ['IV – V – iii – vi (« royal road », J-pop)',[[5,''],[7,''],[4,'m'],[9,'m']]],
+    ['Canon de Pachelbel (8 accords)',[[0,''],[7,''],[9,'m'],[4,'m'],[5,''],[0,''],[5,''],[7,'']]],
+    ['ii – V – I (jazz)',[[2,'m7'],[7,'7'],[0,'maj7'],[0,'maj7']]],
+    ['I – vi – ii – V (turnaround jazz)',[[0,'maj7'],[9,'m7'],[2,'m7'],[7,'7']]],
+    ['Blues 12 mesures',[[0,'7'],[0,'7'],[0,'7'],[0,'7'],[5,'7'],[5,'7'],[0,'7'],[0,'7'],[7,'7'],[5,'7'],[0,'7'],[7,'7']]],
+    ['Blues 12 mesures « quick change »',[[0,'7'],[5,'7'],[0,'7'],[0,'7'],[5,'7'],[5,'7'],[0,'7'],[0,'7'],[7,'7'],[5,'7'],[0,'7'],[7,'7']]],
+    ['Un seul accord (I)',[[0,'']]]],
+  min:[
+    ['i – VI – III – VII (pop / rock mineur n°1)',[[0,'m'],[8,''],[3,''],[10,'']]],
+    ['i – VII – VI – V (andalouse, flamenco)',[[0,'m'],[10,''],[8,''],[7,'']]],
+    ['i – VI – VII – i (épique)',[[0,'m'],[8,''],[10,''],[0,'m']]],
+    ['i – iv – v – i',[[0,'m'],[5,'m'],[7,'m'],[0,'m']]],
+    ['i – iv – V – i (avec la sensible)',[[0,'m'],[5,'m'],[7,''],[0,'m']]],
+    ['i – VII – VI – VII (rock mineur)',[[0,'m'],[10,''],[8,''],[10,'']]],
+    ['i – iv – VII – III (cycle des quintes)',[[0,'m'],[5,'m'],[10,''],[3,'']]],
+    ['i – III – VII – VI',[[0,'m'],[3,''],[10,''],[8,'']]],
+    ['i – IV (dorien, funk / latin)',[[0,'m7'],[5,'7']]],
+    ['iiø – V – i (jazz mineur)',[[2,'m7b5'],[7,'7'],[0,'m7'],[0,'m7']]],
+    ['Blues mineur 12 mesures',[[0,'m7'],[0,'m7'],[0,'m7'],[0,'m7'],[5,'m7'],[5,'m7'],[0,'m7'],[0,'m7'],[8,'7'],[7,'7'],[0,'m7'],[7,'7']]],
+    ['Un seul accord (i)',[[0,'m']]]]
 };
 const fr=()=>M.get('gt.nom','fr')==='fr';
 $('root').innerHTML=M.FRS.map((n,i)=>`<option value="${i}">${n} (${M.SH[i]})</option>`).join('');
@@ -117,8 +143,23 @@ if(location.hash==='#accords'&&prev&&prev.k!=null){$('root').value=String(M.kRoo
 
 let PROG=[],K=0,POS=0,playing=false,timer=null,nextT=0,step=0,cur=-1;
 // Rythmes de grattage sur 8 croches (1 & 2 & 3 & 4 &) : D bas, U haut, X étouffé, - silence
-const STRUMS=[['Pop / folk : ↓ ↓↑ ↑↓↑','D-DU-UDU'],['Débutant : 4 coups vers le bas','D-D-D-D-'],['Croches : ↓↑ en continu','DUDUDUDU'],['Rock : ↓ ↓↑ ↓ ↓↑','D-DUD-DU'],
-  ['Funk / pop avec étouffés','D-XUD-XU'],['Reggae : contretemps','-U-U-U-U'],['Ballade : ↓ - ↓↑ ↓↑','D---DUDU'],['Personnalisé','D-DU-UDU']];
+const STRUMS=[
+  ['Pop / folk : ↓ ↓↑ ↑↓↑ (le plus joué)','D-DU-UDU'],
+  ['Débutant : 4 coups vers le bas','D-D-D-D-'],
+  ['Débutant + : ↓ ↓ ↓↑ ↓↑','D-D-DUDU'],
+  ['Rock / pop : ↓ ↓↑ ↓ ↓↑','D-DUD-DU'],
+  ['Folk : ↓ ↓↑ ↑↓','D-DU-UD-'],
+  ['Croches : ↓↑ en continu','DUDUDUDU'],
+  ['Punk : croches toutes vers le bas','DDDDDDDD'],
+  ['Ballade : ↓ (tenu) ↓↑ ↓↑','D---DUDU'],
+  ['Ballade lente : ↓ ↓ ↓↑ ↓','D-D-DUD-'],
+  ['Funk / pop avec étouffés','D-XUD-XU'],
+  ['Pop moderne : ↓ ✕↑ ↑✕↑','D-XU-UXU'],
+  ['Shuffle simplifié : ↓ ↑↓ ↑↓ ↑','D-UDUDU-'],
+  ['Bossa (simplifiée)','D-UD-UD-'],
+  ['Reggae : contretemps vers le haut','-U-U-U-U'],
+  ['Ska : contretemps vers le bas','-D-D-D-D'],
+  ['Personnalisé','D-DU-UDU']];
 const SLOTS=['1','&','2','&','3','&','4','&'],ARROW={D:'↓',U:'↑',X:'✕','-':'·'};
 let PAT=(saved.pattern||STRUMS[0][1]).split('');
 $('strumPre').innerHTML=STRUMS.map((x,i)=>`<option value="${i}">${x[0]}</option>`).join('');
