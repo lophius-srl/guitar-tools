@@ -3,7 +3,11 @@
   var TOOLS=[
     {href:'index.html',label:'Tab → Gamme'},
     {href:'gammes.html',label:'Gammes'},
-    {href:'analyse.html',label:'Analyse (bêta)'}
+    {href:'analyse.html',label:'Analyse (bêta)'},
+    {href:'accords.html',label:'Accords'},
+    {href:'improviser.html',label:'Improviser'},
+    {href:'manche.html',label:'Manche'},
+    {href:'oreille.html',label:'Oreille'}
   ];
   var nav=document.getElementById('tabs');if(!nav)return;
   // Cloudflare sert /gammes au lieu de /gammes.html : on compare sans l'extension

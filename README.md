@@ -31,9 +31,26 @@ Version expérimentale de l'analyse, à côté de Tab → Gamme (qui reste incha
 - positions choisies pour tout le morceau, avec le moins de déplacements possible ;
 - accordage (Drop D, ½ ton ou 1 ton plus bas) et capodastre.
 
+## Accords
+
+Colle une grille (« Mim Sol Ré Lam » ou « Em G D Am », même avec les paroles) : tonalités possibles, degré de chaque accord (empruntés en rouge), diagrammes (ouverts et barrés, degrés dans les points), écoute, accords de la tonalité, gamme pour improviser.
+
+## Improviser
+
+Boucle d'accompagnement (accords, basse, batterie de synthèse) : grilles toutes faites, grille de l'onglet Accords ou grille libre, trois styles, tempo. Sur le manche : la gamme (pentatonique ou complète), par position, et les notes de l'accord en cours en orange.
+
+## Manche
+
+Jeux d'une minute : « Quelle note ? » et « Trouve la note » ; choix des cases, des cordes, notes naturelles ou toutes ; records et notes à revoir.
+
+## Oreille
+
+Intervalles (montants, descendants, ensemble), types d'accords, degrés après une cadence ; niveaux, série, statistiques par réponse.
+
 ## Structure
 
 - Site statique, sans build : chaque outil est une page HTML autonome.
+- `assets/music.js` : bibliothèque commune (notes, accords, tonalité d'une grille, son, dessin du manche et des diagrammes).
 - `assets/nav.js` : la liste des onglets. Ajouter un outil = une nouvelle page + une ligne dans `TOOLS`.
 - Bibliothèque externe : jsPDF (cdnjs) pour l'export PDF.
 

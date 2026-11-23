@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oreille · Guitar tools</title>
+<meta name="description" content="Entraîne ton oreille : intervalles, types d'accords et degrés dans une tonalité.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=7">
+<style>
+:root{--ok:#2f7d4f}
+@media(prefers-color-scheme:dark){:root{--ok:#5fbf86}}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+@media(max-width:600px){.modes{grid-template-columns:minmax(0,1fr)}}
+.modes button{text-align:left;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-height:58px}
+.modes button b{font-size:15px}.modes button small{color:var(--mut);font-size:12px}
+.modes button.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.hud{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hud .stat{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}
+.hud .stat b{font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums}
+.big{font-size:18px;padding:14px 22px;min-height:56px;min-width:150px}
+.prompt{font-size:15px;color:var(--mut);margin:12px 0 0;min-height:1.4em}
+.answers{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:12px}
+@media(max-width:600px){.answers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.answers button{min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:600}
+.answers button small{font-weight:400;color:var(--mut);font-size:12px}
+.answers button.ok{background:var(--ok);border-color:var(--ok);color:#fff}.answers button.ok small{color:#fff}
+.answers button.ko{background:var(--out);border-color:var(--out);color:#fff}.answers button.ko small{color:#fff}
+.msg{min-height:1.5em;font-weight:600;margin:10px 0 0}
+.msg.ok{color:var(--ok)}.msg.ko{color:var(--out)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:8px}
+.stats div{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.stats .meter{height:5px;border-radius:3px;background:var(--line);overflow:hidden}.stats .meter i{display:block;height:100%;background:var(--ok)}
+</style></head><body><main>
+<p class="brand">Guitar tools</p>
+<nav class="tabs" id="tabs"></nav>
+<h1>Oreille</h1>
+<p class="sub">Écoute, devine, recommence. Quelques minutes par jour suffisent pour reconnaître les intervalles, la couleur des accords et leur rôle dans un morceau.</p>
+
+<div class="panel">
+  <div class="modes" id="modes">
+    <button data-m="int"><b>Intervalles</b><small>L'écart entre deux notes.</small></button>
+    <button data-m="chord"><b>Accords</b><small>Majeur, mineur, septième…</small></button>
+    <button data-m="deg"><b>Degrés</b><small>Le rôle d'un accord dans la tonalité.</small></button>
+  </div>
+  <div class="fields">
+    <label class="field">Niveau <select id="level"></select></label>
+    <label class="field" id="dirWrap">Jeu <select id="dir"><option value="up">montant</option><option value="down">descendant</option><option value="harm">ensemble</option></select></label>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hud">
+    <button class="pri big" id="go">Écouter</button>
+    <button id="again" hidden>Réécouter</button>
+    <div class="stat">Série<b id="streak">0</b></div>
+    <div class="stat">Réussite<b id="rate">–</b></div>
+  </div>
+  <p class="prompt" id="prompt">Touche « Écouter », puis choisis ta réponse.</p>
+  <div class="answers" id="answers"></div>
+  <p class="msg" id="msg"></p>
+</div>
+
+<div class="card">
+  <h2>Tes progrès <small>par réponse, depuis le début</small></h2>
+  <div class="stats" id="stats"></div>
+</div>
+
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
+</main>
+<script src="assets/nav.js?v=7"></script>
+<script src="assets/music.js?v=1"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+// Réponses possibles par mode et par niveau
+const LEVELS={
+  int:[['Débutant',[3,4,7,12]],['Moyen',[2,3,4,5,7,9,12]],['Tous',[1,2,3,4,5,6,7,8,9,10,11,12]]],
+  chord:[['Majeur / mineur',['','m']],['+ diminué, augmenté',['','m','dim','aug']],['+ septièmes',['','m','7','maj7','m7']]],
+  deg:[['I, IV, V',[0,3,4]],['I, IV, V, vi',[0,3,4,5]],['Tous les degrés',[0,1,2,3,4,5]]]
+};
+const SHORT=['','2m','2M','3m','3M','4','triton','5','6m','6M','7m','7M','8'];
+const ROMAN=['I','ii','iii','IV','V','vi','vii°'];
+const ST=M.get('gt.oreille',{mode:'int',level:{int:0,chord:0,deg:0},dir:'up',stats:{}});
+let mode=ST.mode,Q=null,answered=false,streak=0,tot=0,good=0;
+$('dir').value=ST.dir||'up';
+function save(){ST.mode=mode;ST.dir=$('dir').value;ST.level[mode]=+$('level').value;M.set('gt.oreille',ST);}
+const set=()=>LEVELS[mode][+$('level').value][1];
+function labelOf(a){
+  if(mode==='int')return [M.INTERVALS[a],SHORT[a]+(a?` · ${a} demi-ton${a>1?'s':''}`:'')];
+  if(mode==='chord')return [M.QNAME[a],'accord '+(M.QSHOW[a]||'majeur')];
+  return [ROMAN[a],['tonique','sus-tonique','médiante','sous-dominante','dominante','relative mineure','sensible'][a]];
+}
+function setMode(){
+  $('modes').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
+  $('level').innerHTML=LEVELS[mode].map((l,i)=>`<option value="${i}">${l[0]}</option>`).join('');$('level').value=String(ST.level[mode]||0);
+  $('dirWrap').hidden=mode!=='int';
+  Q=null;answered=false;$('again').hidden=true;$('go').textContent='Écouter';$('msg').textContent='';
+  $('prompt').textContent=mode==='deg'?'Tu entends d\'abord une cadence (I–IV–V–I) pour poser la tonalité, puis l\'accord à reconnaître.':'Touche « Écouter », puis choisis ta réponse.';
+  $('answers').innerHTML=set().map(a=>{const[l,s]=labelOf(a);return `<button data-a="${a}" disabled>${l}<small>${s}</small></button>`;}).join('');
+  renderStats();
+}
+// Accord compact autour d'une basse
+const voice=(root,q)=>M.QUALS[q].map(i=>root+i);
+function play(){
+  const t=M.now()+.08;
+  if(mode==='int'){const[a,b]=$('dir').value==='down'?[Q.lo+Q.a,Q.lo]:[Q.lo,Q.lo+Q.a];
+    if($('dir').value==='harm'){M.pluck(t,a,.3,2);M.pluck(t,b,.3,2);}else{M.pluck(t,a,.3,1.4);M.pluck(t+.75,b,.3,1.6);}}
+  else if(mode==='chord'){const v=voice(Q.root,Q.a);M.strum(t,v,{vol:.2,spread:.02});M.strum(t+1.3,v,{vol:.0001+.2,spread:0});}
+  else{const k=Q.root,cad=[[0,''],[5,''],[7,''],[0,'']];cad.forEach(([iv,q],i)=>M.strum(t+i*.7,voice(k+iv,q),{vol:.15,spread:.012,dur:.9}));
+    const d=M.diatonic(k%12)[Q.a],r=k+((d.r-k%12+12)%12);M.strum(t+3.4,voice(r>k+7?r-12:r,d.q),{vol:.2,spread:.02,dur:2});}
+}
+function newQ(){
+  const s=set(),a=s[Math.floor(Math.random()*s.length)];
+  if(mode==='int')Q={a,lo:52+Math.floor(Math.random()*12)};
+  else if(mode==='chord')Q={a,root:48+Math.floor(Math.random()*12)};
+  else Q={a,root:48+Math.floor(Math.random()*12)};
+  answered=false;$('msg').textContent='';$('answers').querySelectorAll('button').forEach(b=>{b.className='';b.disabled=false;});
+  $('again').hidden=false;$('go').textContent='Question suivante';play();
+}
+function renderStats(){const st=ST.stats[mode]||{};
+  $('stats').innerHTML=set().map(a=>{const x=st[a]||[0,0],p=x[1]?Math.round(x[0]/x[1]*100):null;return `<div><span><b>${labelOf(a)[0]}</b></span><span class="muted">${p==null?'pas encore essayé':p+' % · '+x[1]+' essai'+(x[1]>1?'s':'')}</span><span class="meter"><i style="width:${p||0}%"></i></span></div>`;}).join('');}
+$('go').onclick=()=>{M.audio();newQ();};
+$('again').onclick=()=>Q&&play();
+$('answers').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!Q||answered)return;
+  const a=mode==='chord'?b.dataset.a:+b.dataset.a,ok=a===Q.a;answered=true;tot++;
+  ST.stats[mode]=ST.stats[mode]||{};const x=ST.stats[mode][Q.a]||[0,0];x[1]++;if(ok)x[0]++;ST.stats[mode][Q.a]=x;save();
+  if(ok){good++;streak++;b.classList.add('ok');$('msg').className='msg ok';$('msg').textContent='Bravo !';setTimeout(()=>{if(answered)newQ();},1100);}
+  else{streak=0;b.classList.add('ko');const g=$('answers').querySelector(`[data-a="${Q.a}"]`);if(g)g.classList.add('ok');$('msg').className='msg ko';$('msg').textContent=`C'était : ${labelOf(Q.a)[0]}. Réécoute pour bien l'entendre.`;}
+  $('streak').textContent=streak;$('rate').textContent=Math.round(good/tot*100)+' %';renderStats();});
+$('modes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;save();setMode();});
+$('level').onchange=()=>{save();setMode();};$('dir').onchange=save;
+setMode();
+}
+</script></body></html>

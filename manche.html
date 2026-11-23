@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manche · Guitar tools</title>
+<meta name="description" content="Petits jeux chronométrés pour mémoriser les notes du manche de guitare.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=7">
+<style>
+:root{--ok:#2f7d4f;--okL:#e2f1e7}
+@media(prefers-color-scheme:dark){:root{--ok:#5fbf86;--okL:#17301f}}
+.modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.modes button{text-align:left;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-height:60px}
+.modes button b{font-size:15px}.modes button small{color:var(--mut);font-size:12px}
+.modes button.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.strs{display:flex;gap:4px;flex-wrap:wrap}
+.strs label{display:inline-flex;align-items:center;gap:3px;font-size:14px;color:var(--fg);border:1px solid var(--line2);border-radius:8px;padding:4px 8px;min-height:36px}
+.hud{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.hud .q{font-size:28px;font-weight:800;min-width:160px}
+.hud .stat{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}
+.hud .stat b{font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums}
+.hud .grow{margin-left:auto}
+.answers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:12px}
+@media(max-width:600px){.answers{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.answers button{font-size:16px;font-weight:600;min-height:48px;padding:6px}
+.answers button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.answers button.ko{background:var(--out);border-color:var(--out);color:#fff}
+#neck .hit{cursor:pointer}
+.msg{min-height:1.5em;font-weight:600;margin:6px 0 0}
+.msg.ok{color:var(--ok)}.msg.ko{color:var(--out)}
+.result{font-size:15px}
+.result b{font-size:20px}
+</style></head><body><main>
+<p class="brand">Guitar tools</p>
+<nav class="tabs" id="tabs"></nav>
+<h1>Manche</h1>
+<p class="sub">Une minute pour retrouver les notes du manche. Commence sur les premières cases et une ou deux cordes, puis élargis.</p>
+
+<div class="panel">
+  <div class="modes" id="modes">
+    <button data-m="name"><b>Quelle note ?</b><small>Une case s'allume : donne son nom.</small></button>
+    <button data-m="find"><b>Trouve la note</b><small>Touche toutes les cases où elle se trouve.</small></button>
+  </div>
+  <div class="fields">
+    <label class="field">Cases <select id="range"><option value="0-4">0 à 4</option><option value="0-7">0 à 7</option><option value="0-12">0 à 12</option><option value="5-12">5 à 12</option></select></label>
+    <label class="field">Notes <select id="notes"><option value="nat">naturelles (sans #)</option><option value="all">toutes</option></select></label>
+    <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+    <div class="field">Cordes <div class="strs" id="strs"></div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hud">
+    <div class="q" id="q">Prêt ?</div>
+    <div class="stat">Temps<b id="time">60</b></div>
+    <div class="stat">Score<b id="score">0</b></div>
+    <div class="stat">Record<b id="best">0</b></div>
+    <button class="pri grow" id="go">Commencer</button>
+  </div>
+  <div id="neck"></div>
+  <div class="answers" id="answers"></div>
+  <p class="msg" id="msg"></p>
+  <div class="result" id="result"></div>
+</div>
+
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
+</main>
+<script src="assets/nav.js?v=7"></script>
+<script src="assets/music.js?v=1"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+const NAT=[0,2,4,5,7,9,11];
+const S=M.get('gt.manche',{mode:'name',range:'0-4',notes:'nat',strs:[5,4]});
+let mode=S.mode,run=false,left=60,score=0,tries=0,miss={},target=null,found=new Set(),todo=[],clock=null,lock=false;
+$('nom').value=M.get('gt.nom','fr');$('range').value=S.range;$('notes').value=S.notes;
+$('strs').innerHTML=M.SN.map((n,s)=>`<label><input type="checkbox" value="${s}" ${S.strs.includes(s)?'checked':''}> ${n}</label>`).join('');
+const nm=()=>$('nom').value==='fr'?M.FRS:M.SH;
+const strs=()=>[...$('strs').querySelectorAll('input:checked')].map(i=>+i.value);
+const rng=()=>$('range').value.split('-').map(Number);
+const pcOK=pc=>$('notes').value==='all'||NAT.includes(pc);
+const key=()=>`${mode}|${$('range').value}|${$('notes').value}|${strs().sort().join('')}`;
+function save(){M.set('gt.manche',{mode,range:$('range').value,notes:$('notes').value,strs:strs()});M.set('gt.nom',$('nom').value);}
+function best(){return (M.get('gt.mancheBest',{}))[key()]||0;}
+
+function cells(){const[lo,hi]=rng(),out=[];strs().forEach(s=>{for(let f=lo;f<=hi;f++){const pc=(M.OPEN[s]+f)%12;if(pcOK(pc))out.push({s,f,pc});}});return out;}
+function draw(extra){
+  const[lo,hi]=rng(),el=$('neck'),vert=el.clientWidth<560,dots=[];
+  if(mode==='name'&&target)dots.push({s:target.s,f:target.f,txt:'?',fill:'var(--acc)',stroke:'var(--acc)',tc:'#fff',fw:700,r:vert?15:13});
+  if(mode==='find')found.forEach(k=>{const[s,f]=k.split('-').map(Number);dots.push({s,f,txt:nm()[(M.OPEN[s]+f)%12],fill:'var(--ok)',stroke:'var(--ok)',tc:'#fff',fw:700});});
+  (extra||[]).forEach(d=>dots.push(d));
+  // cordes non travaillées en grisé : on dessine quand même tout le manche choisi
+  el.innerHTML=M.neck({lo,hi:Math.max(hi,lo+4),vert,dots,hit:mode==='find'});
+  const act=strs();el.querySelectorAll('.hit').forEach(h=>{if(!act.includes(+h.dataset.s))h.remove();});
+}
+function answers(){
+  if(mode!=='name'){$('answers').innerHTML='';return;}
+  const pcs=$('notes').value==='all'?[...Array(12).keys()]:NAT;
+  const flat=$('nom').value==='fr'?M.FRF:M.FLT;
+  $('answers').innerHTML=pcs.map(pc=>`<button data-pc="${pc}">${NAT.includes(pc)?nm()[pc]:nm()[pc]+'/'+flat[pc]}</button>`).join('');
+}
+function next(){
+  const cs=cells();if(!cs.length){$('msg').textContent='Choisis au moins une corde.';stop();return;}
+  if(mode==='name'){let t;do{t=cs[Math.floor(Math.random()*cs.length)];}while(cs.length>1&&target&&t.s===target.s&&t.f===target.f);target=t;$('q').textContent='Quelle note ?';}
+  else{const pcs=[...new Set(cs.map(c=>c.pc))];let pc;do{pc=pcs[Math.floor(Math.random()*pcs.length)];}while(pcs.length>1&&target&&pc===target.pc);
+    target={pc};found=new Set();todo=cs.filter(c=>c.pc===pc).map(c=>c.s+'-'+c.f);$('q').textContent=`Trouve tous les ${nm()[pc]}`;}
+  lock=false;draw();
+}
+function start(){save();run=true;left=60;score=0;tries=0;miss={};target=null;$('result').innerHTML='';$('msg').textContent='';$('msg').className='msg';
+  $('score').textContent=0;$('time').textContent=60;$('go').textContent='Arrêter';answers();next();
+  clock=setInterval(()=>{left--;$('time').textContent=left;if(left<=0)stop(true);},1000);}
+function stop(done){run=false;clearInterval(clock);$('go').textContent='Recommencer';target=null;draw();
+  if(done){const b=M.get('gt.mancheBest',{});const rec=score>(b[key()]||0);if(rec){b[key()]=score;M.set('gt.mancheBest',b);}$('best').textContent=best();
+    const worst=Object.entries(miss).sort((a,c)=>c[1]-a[1]).slice(0,3).map(([pc])=>nm()[pc]);
+    $('q').textContent=rec?'Nouveau record !':'Terminé';
+    $('result').innerHTML=`<b>${score}</b> ${mode==='name'?'bonnes réponses':'notes trouvées en entier'} en une minute${tries?` · ${Math.round(score/Math.max(1,tries)*100)} % de réussite`:''}.${worst.length?` À revoir : <b>${worst.join(', ')}</b>.`:''}`;}
+  else $('q').textContent='Prêt ?';}
+function feedback(ok,txt){$('msg').textContent=txt;$('msg').className='msg '+(ok?'ok':'ko');}
+
+$('go').onclick=()=>run?stop(false):start();
+$('answers').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!run||lock||mode!=='name')return;
+  const pc=+b.dataset.pc,ok=pc===target.pc;tries++;lock=true;
+  const t=M.now();M.pluck(t,M.OPEN[target.s]+target.f,.3,1);
+  if(ok){score++;$('score').textContent=score;b.classList.add('ok');feedback(true,'Oui !');}
+  else{miss[target.pc]=(miss[target.pc]||0)+1;b.classList.add('ko');const good=$('answers').querySelector(`[data-pc="${target.pc}"]`);if(good)good.classList.add('ok');feedback(false,`Non : c'était ${nm()[target.pc]}.`);}
+  setTimeout(()=>{$('answers').querySelectorAll('button').forEach(x=>x.className='');if(run)next();},ok?350:1100);});
+$('neck').addEventListener('click',e=>{const h=e.target.closest('.hit');if(!h||!run||mode!=='find'||lock)return;
+  const s=+h.dataset.s,f=+h.dataset.f,k=s+'-'+f,pc=(M.OPEN[s]+f)%12;M.pluck(M.now(),M.OPEN[s]+f,.3,1);
+  if(found.has(k))return;
+  if(pc===target.pc){found.add(k);feedback(true,`${found.size} / ${todo.length}`);
+    if(found.size===todo.length){score++;tries++;$('score').textContent=score;lock=true;draw();setTimeout(()=>run&&next(),500);}else draw();}
+  else{tries++;miss[target.pc]=(miss[target.pc]||0)+1;feedback(false,`Non : ici c'est ${nm()[pc]}.`);draw([{s,f,txt:nm()[pc],fill:'var(--out)',stroke:'var(--out)',tc:'#fff',fw:700}]);}});
+$('modes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;if(run)stop(false);setMode();save();});
+function setMode(){$('modes').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));$('best').textContent=best();answers();draw();$('result').innerHTML='';$('msg').textContent='';}
+['range','notes','nom'].forEach(id=>$(id).onchange=()=>{if(run)stop(false);save();setMode();});
+$('strs').addEventListener('change',()=>{if(run)stop(false);save();setMode();});
+let RW=null;new ResizeObserver(()=>{const w=$('neck').clientWidth;if(RW!==null&&(w<560)!==(RW<560))draw();RW=w;}).observe($('neck'));
+setMode();
+}
+</script></body></html>
