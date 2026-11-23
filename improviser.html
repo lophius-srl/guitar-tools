@@ -22,6 +22,14 @@
 .tip{font-size:14px;color:var(--mut);margin:0 0 10px}
 .tip b{color:var(--fg)}
 .legend .dot.tone{background:var(--acc)}
+.strum{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;max-width:640px}
+.strum button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:72px;padding:6px 2px;font-size:28px;font-weight:700;line-height:1}
+.strum button small{font-size:12px;font-weight:600;color:var(--mut)}
+.strum button.beat small{color:var(--fg)}
+.strum button.rest{color:var(--line2)}
+.strum button.x{color:var(--out)}
+.strum button.now{background:var(--acc);border-color:var(--acc);color:#fff}.strum button.now small{color:#fff}
+@media(max-width:600px){.strum{gap:4px}.strum button{min-height:60px;font-size:22px}}
 #custom{font:inherit;font-size:16px;color:var(--fg);padding:8px 12px;min-height:40px;border-radius:8px;border:1px solid var(--line2);background:var(--card);width:100%;min-width:220px}
 </style></head><body><main>
 <p class="brand">Guitar tools</p>
@@ -38,6 +46,7 @@
     <label class="field">Tempo <select id="bpm"></select></label>
     <label class="field">Mesures / accord <select id="bars"><option value="1">1</option><option value="2">2</option></select></label>
     <label class="check"><input type="checkbox" id="drums" checked> Batterie</label>
+    <label class="check"><input type="checkbox" id="strumOn"> Rythme de grattage</label>
   </div>
   <label class="field" id="customWrap" style="margin-top:10px" hidden>Ta grille <input id="custom" type="text" autocomplete="off" spellcheck="false" placeholder="Ex. : Lam Fa Do Sol"></label>
 </div>
@@ -51,6 +60,16 @@
     </div>
   </div>
   <div class="prog" id="prog"></div>
+</div>
+
+<div class="card" id="strumCard" hidden>
+  <h2>Rythme de grattage <small>↓ vers le bas · ↑ vers le haut · ✕ étouffé · touche une case pour la changer</small></h2>
+  <div class="fields" style="margin-bottom:12px">
+    <label class="field">Rythme <select id="strumPre"></select></label>
+    <label class="check"><input type="checkbox" id="selfStrum"> Je gratte moi-même (la guitare de la boucle se tait)</label>
+  </div>
+  <div class="strum" id="strum"></div>
+  <p class="tip" id="strumTip" style="margin:10px 0 0"></p>
 </div>
 
 <div class="card">
@@ -97,6 +116,21 @@ $('custom').value=saved.custom||'';
 if(location.hash==='#accords'&&prev&&prev.k!=null){$('root').value=String(M.kRoot(prev.k));$('mode').value=M.kMin(prev.k)?'min':'maj';fillPresets();$('preset').value='acc';}
 
 let PROG=[],K=0,POS=0,playing=false,timer=null,nextT=0,step=0,cur=-1;
+// Rythmes de grattage sur 8 croches (1 & 2 & 3 & 4 &) : D bas, U haut, X étouffé, - silence
+const STRUMS=[['Pop / folk : ↓ ↓↑ ↑↓↑','D-DU-UDU'],['Débutant : 4 coups vers le bas','D-D-D-D-'],['Croches : ↓↑ en continu','DUDUDUDU'],['Rock : ↓ ↓↑ ↓ ↓↑','D-DUD-DU'],
+  ['Funk / pop avec étouffés','D-XUD-XU'],['Reggae : contretemps','-U-U-U-U'],['Ballade : ↓ - ↓↑ ↓↑','D---DUDU'],['Personnalisé','D-DU-UDU']];
+const SLOTS=['1','&','2','&','3','&','4','&'],ARROW={D:'↓',U:'↑',X:'✕','-':'·'};
+let PAT=(saved.pattern||STRUMS[0][1]).split('');
+$('strumPre').innerHTML=STRUMS.map((x,i)=>`<option value="${i}">${x[0]}</option>`).join('');
+$('strumOn').checked=!!saved.strumOn;$('selfStrum').checked=!!saved.selfStrum;
+$('strumPre').value=String(Math.max(0,STRUMS.findIndex(x=>x[1]===PAT.join(''))>=0?STRUMS.findIndex(x=>x[1]===PAT.join('')):STRUMS.length-1));
+function drawStrum(){
+  $('strumCard').hidden=!$('strumOn').checked;
+  $('strum').innerHTML=PAT.map((p,i)=>`<button data-i="${i}" class="${i%2?'':'beat'} ${p==='-'?'rest':p==='X'?'x':''}" aria-label="temps ${SLOTS[i]} : ${({D:'vers le bas',U:'vers le haut',X:'étouffé','-':'silence'})[p]}">${ARROW[p]}<small>${SLOTS[i]}</small></button>`).join('');
+  const downs=PAT.filter(p=>p==='D').length,ups=PAT.filter(p=>p==='U').length;
+  $('strumTip').innerHTML=`Garde la main qui bat en continu (bas sur les chiffres, haut sur les « & »), même quand tu ne touches pas les cordes : c'est ce qui fait tenir le rythme. ${downs} coup${downs>1?'s':''} vers le bas, ${ups} vers le haut.`;
+}
+function strumSlot(i){document.querySelectorAll('#strum button').forEach((b,j)=>b.classList.toggle('now',j===i));}
 function key(){return +$('root').value+($('mode').value==='min'?12:0);}
 function buildProg(){
   K=key();const r=M.kRoot(K),p=$('preset').value;
@@ -106,7 +140,7 @@ function buildProg(){
   const nm=M.names(r,M.kMin(K),fr());
   $('prog').innerHTML=PROG.map((c,i)=>`<span data-i="${i}">${M.chordName(c,nm)}<small>${M.roman(c,K).n}</small></span>`).join('');
 }
-function save(){M.set('gt.improSet',{root:+$('root').value,mode:$('mode').value,preset:$('preset').value,style:$('style').value,bpm:+$('bpm').value,bars:+$('bars').value,drums:$('drums').checked,scale:$('scale').value,custom:$('custom').value});}
+function save(){M.set('gt.improSet',{root:+$('root').value,mode:$('mode').value,preset:$('preset').value,style:$('style').value,bpm:+$('bpm').value,bars:+$('bars').value,drums:$('drums').checked,scale:$('scale').value,custom:$('custom').value,strumOn:$('strumOn').checked,selfStrum:$('selfStrum').checked,pattern:PAT.join('')});}
 
 // ---------- Manche ----------
 function scaleIv(){const minor=M.kMin(K);return $('scale').value==='penta'?(minor?[0,3,5,7,10]:[0,2,4,7,9]):M.kScale(K);}
@@ -132,7 +166,12 @@ function voicing(c){const v=M.voicings(c)[0];return v?M.voicingMidis(v.fr):M.cho
 function bassNote(c){return 40+((c.r-4+12)%12);}
 function scheduleBar(t,c,beat){
   const spb=60/+$('bpm').value,st=$('style').value,v=voicing(c),drums=$('drums').checked;
-  if(st==='pop'){[[0,1],[1,1],[1.5,0],[2.5,0],[3,1],[3.5,0]].forEach(([b,d])=>M.strum(t+b*spb,v,{down:!!d,vol:d?.16:.1}));}
+  const strumOn=$('strumOn').checked,silent=strumOn&&$('selfStrum').checked;
+  if(strumOn){if(!silent)PAT.forEach((p,i)=>{const ti=t+i*spb/2;
+      if(p==='D')M.strum(ti,v,{down:true,vol:i%2?.13:.17});
+      else if(p==='U')M.strum(ti,v.slice().sort((a,b)=>b-a).slice(0,4),{down:false,vol:.1});
+      else if(p==='X'){M.strum(ti,v,{vol:.08,dur:.05,spread:.004});M.snare(ti,.06);}});}
+  else if(st==='pop'){[[0,1],[1,1],[1.5,0],[2.5,0],[3,1],[3.5,0]].forEach(([b,d])=>M.strum(t+b*spb,v,{down:!!d,vol:d?.16:.1}));}
   else if(st==='ballad'){const lo=v.slice().sort((a,b)=>a-b),pat=[0,2,3,4,lo.length-1,4,3,2].map(i=>lo[Math.min(i,lo.length-1)]);pat.forEach((m,i)=>M.pluck(t+i*spb/2,m,.2,1.4));}
   else{const low=v.slice().sort((a,b)=>a-b).slice(0,3);for(let i=0;i<8;i++)M.strum(t+i*spb/2,low,{vol:i%2?.11:.16,dur:.35,spread:.006});}
   M.bass(t,bassNote(c),spb*1.8);M.bass(t+2*spb,bassNote(c)+(st==='rock'?0:7),spb*1.8,.35);
@@ -146,6 +185,7 @@ function tick(){
     const delay=Math.max(0,(t-M.now())*1000);
     setTimeout(()=>{if(!playing)return;cur=ci;showNow();drawNeck();},delay);
     for(let b=0;b<4;b++)setTimeout(()=>{if(!playing)return;document.querySelectorAll('#beats i').forEach((e,j)=>e.classList.toggle('on',j===b));},delay+b*spb*1000);
+    if($('strumOn').checked)for(let k=0;k<8;k++)setTimeout(()=>{if(playing)strumSlot(k);},delay+k*spb*500);
     step++;nextT+=barLen;
   }
 }
@@ -155,7 +195,7 @@ function showNow(){
   document.querySelectorAll('#prog span').forEach(e=>e.classList.toggle('on',+e.dataset.i===cur));
 }
 function start(){M.audio();playing=true;step=0;nextT=M.now()+.12;tick();timer=setInterval(tick,40);$('play').textContent='Stop';}
-function stopP(){playing=false;clearInterval(timer);timer=null;cur=-1;$('play').textContent='Lancer';$('cn').textContent='–';$('dg').hidden=true;$('nx').textContent='';
+function stopP(){strumSlot(-1);playing=false;clearInterval(timer);timer=null;cur=-1;$('play').textContent='Lancer';$('cn').textContent='–';$('dg').hidden=true;$('nx').textContent='';
   document.querySelectorAll('#prog span.on,#beats i.on').forEach(e=>e.classList.remove('on'));drawNeck();}
 $('play').onclick=()=>playing?stopP():start();
 
@@ -163,10 +203,16 @@ function refresh(){const was=playing;if(was)stopP();buildProg();save();drawNeck(
 $('mode').onchange=()=>{fillPresets();refresh();};
 ['root','preset','bars'].forEach(id=>$(id).onchange=refresh);
 ['style','bpm','drums'].forEach(id=>$(id).onchange=save);
+$('strumOn').onchange=()=>{save();drawStrum();};$('selfStrum').onchange=save;
+$('strumPre').onchange=()=>{PAT=STRUMS[+$('strumPre').value][1].split('');save();drawStrum();};
+// Toucher une case : ↓ → ↑ → ✕ → silence → ↓ ; le rythme devient « Personnalisé »
+$('strum').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i,cyc=['D','U','X','-'];
+  PAT[i]=cyc[(cyc.indexOf(PAT[i])+1)%4];const k=STRUMS.findIndex(x=>x[1]===PAT.join(''));$('strumPre').value=String(k>=0?k:STRUMS.length-1);
+  if(k<0)STRUMS[STRUMS.length-1][1]=PAT.join('');save();drawStrum();});
 $('scale').onchange=()=>{POS=0;save();drawNeck();};
 let T=null;$('custom').addEventListener('input',()=>{clearTimeout(T);T=setTimeout(refresh,400);});
 $('pos').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;POS=+b.dataset.p;drawNeck();});
 let RW=null;new ResizeObserver(()=>{const w=$('neck').clientWidth;if(RW!==null&&(w<560)!==(RW<560))drawNeck();RW=w;}).observe($('neck'));
-buildProg();drawNeck();
+buildProg();drawNeck();drawStrum();
 }
 </script></body></html>
