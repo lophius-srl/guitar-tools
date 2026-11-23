@@ -287,7 +287,7 @@ function drawJourney(){
   const vert=el.clientWidth<560,{secs}=JOURNEY,first=1,hi=15,nCols=hi-first+1;
   // axe des cases (a) et axe des cordes (b), puis conversion en x/y selon l'orientation
   const fw=vert?34:44,sh=vert?40:26,openW=28;
-  const a0=vert?40:56,b0=vert?54:100;           // marge avant le sillet / avant la 1re corde
+  const a0=vert?40:56,b0=vert?54:84;           // marge avant le sillet / avant la 1re corde
   const A=f=>f===0?a0-openW/2:a0+openW/2+(f-first+0.5)*fw-openW/2+openW/2;
   const nut=a0+openW/2,fretX=f=>f===0?a0:nut+(f-first+0.5)*fw,aEnd=nut+nCols*fw;
   const Bs=s=>b0+(vert?(5-s):s)*sh,bEnd=b0+5*sh;
