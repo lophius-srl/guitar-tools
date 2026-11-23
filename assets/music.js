@@ -143,7 +143,7 @@ M.neck=o=>{
     g+=`<rect class="hit" data-s="${s}" data-f="${f}" x="${x}" y="${y}" width="${ww}" height="${hh}" fill="transparent"/>`;}
   (o.dots||[]).forEach(d=>{const[cx,cy]=XY(A(d.f),B(d.s)),t=d.txt==null?'':String(d.txt),fs=(t.length>3?7.5:t.length>2?8.5:9.5)*(vert?1.15:1);
     g+=`<g class="dotg ${d.cls||''}" ${d.data||''} opacity="${d.op==null?1:d.op}" style="pointer-events:none"><circle class="dot" cx="${cx}" cy="${cy}" r="${d.r||r}" fill="${d.fill||'var(--card)'}" stroke="${d.stroke||'var(--str)'}" stroke-width="${d.sw||1}"/>${t?`<text x="${cx}" y="${cy+fs*.36}" font-size="${fs}" text-anchor="middle" fill="${d.tc||'var(--fg)'}" font-weight="${d.fw||500}">${t}</text>`:''}</g>`;});
-  return `<svg viewBox="0 0 ${W} ${H}" font-family="system-ui,sans-serif" style="width:100%;height:auto;display:block;margin:auto;${vert?`max-width:${Math.round(W*1.15)}px`:''}">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" font-family="system-ui,sans-serif" style="width:100%;height:auto;display:block;margin:auto;max-width:${Math.round(W*(vert?1.15:1.45))}px">${g}</svg>`;
 };
 
 // ---------- Son ----------
