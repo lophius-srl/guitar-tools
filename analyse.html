@@ -56,8 +56,12 @@ textarea{width:100%;min-height:160px;font:13px/1.35 ui-monospace,Menlo,monospace
 .cand .rel{font-size:12px;color:var(--mut);min-height:1.3em;line-height:1.3}
 .cand.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .resetk{background:none;border:0;padding:0;min-height:0;color:var(--acc);font-size:13px;text-decoration:underline;cursor:pointer}
-.jlist{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}
-.jn{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px}
+.jlist{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 6px;padding:0;counter-reset:j}
+.jlist li{display:flex;align-items:center;gap:8px;position:relative}
+.jlist li+li::before{content:"→";position:absolute;left:-17px;color:var(--root);font-weight:700}
+.jlist li span{display:flex;flex-direction:column;line-height:1.2;font-size:14px}
+.jlist li small{color:var(--mut);font-size:12px}
+.jn{display:inline-grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:var(--acc);color:#fff;font-size:12px}
 .jarr{color:var(--root);font-weight:700}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .bar{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:4px 8px;font-size:15px}
@@ -280,44 +284,56 @@ function relation(a,b){
   return '';
 }
 let FORCED=null,PERLINE=4,JOURNEY=null;
-// Manche complet (cases 0 à 15) : chaque position utilisée, numérotée dans l'ordre du morceau,
-// des flèches pour les déplacements et les notes jouées. Vertical sur téléphone, comme dans Gammes.
+// Parcours de la main : le manche entier, chaque position utilisée (numérotée dans l'ordre),
+// des flèches pour les déplacements, et les notes jouées avec leur nom.
+// Même dessin à l'horizontale (ordinateur) et à la verticale (téléphone) : seul l'axe change.
 function drawJourney(){
   const el=$('jneck');if(!el||!JOURNEY)return;
-  const vert=el.clientWidth<560,{secs}=JOURNEY,first=1;
-  // sur téléphone, on s'arrête un peu après la dernière position utilisée (le manche vertical est long)
+  const vert=el.clientWidth<560,{secs,key}=JOURNEY,first=1;
   const hi=vert?Math.min(15,Math.max(7,...secs.map(x=>x.p+4))):15,nCols=hi-first+1;
-  // axe des cases (a) et axe des cordes (b), puis conversion en x/y selon l'orientation
-  const fw=vert?34:44,sh=vert?40:26,openW=28;
-  const a0=vert?40:56,b0=vert?54:84;           // marge avant le sillet / avant la 1re corde
-  const A=f=>f===0?a0-openW/2:a0+openW/2+(f-first+0.5)*fw-openW/2+openW/2;
-  const nut=a0+openW/2,fretX=f=>f===0?a0:nut+(f-first+0.5)*fw,aEnd=nut+nCols*fw;
-  const Bs=s=>b0+(vert?(5-s):s)*sh,bEnd=b0+5*sh;
+  const nm=names(kRoot(key),kMin(key));
+  // a = axe des cases, b = axe des cordes
+  const fw=vert?40:46,sh=vert?42:28,lab=16,openC=lab+18,nut=lab+34,b0=vert?64:72;
+  const fretA=f=>f===0?openC:nut+(f-first+0.5)*fw,aEnd=nut+nCols*fw;
+  const Bs=s=>b0+(vert?(5-s):s)*sh,bEnd=b0+5*sh,bMid=b0+2.5*sh;
   const XY=(a,b)=>vert?[b,a]:[a,b];
-  const W=vert?bEnd+96:aEnd+12,H=vert?aEnd+12:bEnd+30;
-  const boxA=p=>p===1?[a0-openW/2,fretX(4)+fw/2]:[fretX(p)-fw/2,fretX(p+3)+fw/2];
+  const W=vert?bEnd+44:aEnd+10,H=vert?aEnd+10:bEnd+34;
+  const rect=(a0,a1,c0,c1,attr)=>{const[x,y]=XY(a0,c0),[w,h]=vert?[c1-c0,a1-a0]:[a1-a0,c1-c0];return `<rect x="${x}" y="${y}" width="${w}" height="${h}" ${attr}/>`;};
+  const line=(a1,b1,a2,b2,attr)=>{const[x1,y1]=XY(a1,b1),[x2,y2]=XY(a2,b2);return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${attr}/>`;};
+  const text=(a,b,t,attr)=>{const[x,y]=XY(a,b);return `<text x="${x}" y="${y}" ${attr}>${t}</text>`;};
+  const zone=p=>p===1?[openC-14,fretA(4)+fw/2]:[fretA(p)-fw/2,fretA(p+3)+fw/2];
   let g='';
+  // touche
+  g+=rect(nut,aEnd,b0-10,bEnd+10,'rx="6" fill="var(--bg)"');
+  // positions utilisées
   const byP={};secs.forEach((x,i)=>(byP[x.p]=byP[x.p]||[]).push(i+1));
-  Object.keys(byP).forEach(p=>{const[q0,q1]=boxA(+p),[x,y]=XY(q0,b0-12),[w,h]=vert?[5*sh+24,q1-q0]:[q1-q0,5*sh+24];
-    g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="var(--accL)" stroke="var(--acc)" stroke-width="1.5"/>`;});
-  for(let k=0;k<=nCols;k++){const aa=nut+k*fw,[x1,y1]=XY(aa,b0),[x2,y2]=XY(aa,bEnd);g+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--line2)" stroke-width="${k===0?5:1.3}"/>`;}
-  for(let s=0;s<6;s++){const bb=Bs(s),[x1,y1]=XY(nut,bb),[x2,y2]=XY(aEnd,bb);g+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--str)" stroke-width="${0.8+s*0.3}"/>`;
-    const[lx,ly]=vert?[bb,a0-openW/2-8]:[a0-openW-12,bb+4];g+=`<text x="${lx}" y="${ly}" font-size="11" text-anchor="middle" fill="var(--mut)">${SN[s]}</text>`;}
-  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f)){const[x,y]=vert?[bEnd+18,fretX(f)+4]:[fretX(f),bEnd+24];g+=`<text x="${x}" y="${y}" font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}">${f}</text>`;}
-  const seen=new Set();secs.forEach(x=>x.notes.forEach(n=>{const k=n.s+'-'+n.f;if(seen.has(k))return;seen.add(k);
-    const[cx,cy]=XY(fretX(n.f),Bs(n.s));g+=`<circle cx="${cx}" cy="${cy}" r="6" fill="var(--acc)"/>`;}));
-  // flèches : au-dessus du manche (horizontal) ou à droite (vertical)
+  Object.keys(byP).forEach(p=>{const[z0,z1]=zone(+p);g+=rect(z0,z1,b0-16,bEnd+16,'rx="10" fill="var(--accL)" fill-opacity=".75" stroke="var(--acc)" stroke-width="1.5"');});
+  // repères de case
+  [3,5,7,9,15].filter(f=>f<=hi).forEach(f=>{const[x,y]=XY(fretA(f),bMid);g+=`<circle cx="${x}" cy="${y}" r="4.5" fill="var(--line2)"/>`;});
+  if(hi>=12)[b0+1.5*sh,b0+3.5*sh].forEach(bb=>{const[x,y]=XY(fretA(12),bb);g+=`<circle cx="${x}" cy="${y}" r="4.5" fill="var(--line2)"/>`;});
+  // cases, sillet, cordes
+  for(let k=1;k<=nCols;k++){const aa=nut+k*fw;g+=line(aa,b0,aa,bEnd,'stroke="var(--line2)" stroke-width="1.5"');}
+  g+=line(nut,b0-2,nut,bEnd+2,'stroke="var(--str)" stroke-width="5" stroke-linecap="round"');
+  for(let s=0;s<6;s++){const bb=Bs(s);g+=line(nut,bb,aEnd,bb,`stroke="var(--str)" stroke-width="${0.8+s*0.3}"`);
+    g+=text(lab-6,bb+4,SN[s],`font-size="11" text-anchor="middle" fill="var(--mut)"`);}
+  for(let f=first;f<=hi;f++)if([3,5,7,9,12,15].includes(f))g+=text(fretA(f),bEnd+(vert?32:30),f,`font-size="11" text-anchor="middle" fill="${f===12?'var(--fg)':'var(--mut)'}"`);
+  // flèches entre positions (côté opposé aux numéros de case)
   for(let i=1;i<secs.length;i++){const p0=secs[i-1].p,p1=secs[i].p;if(p0===p1)continue;
-    const c0=(boxA(p0)[0]+boxA(p0)[1])/2,c1=(boxA(p1)[0]+boxA(p1)[1])/2,lift=14+((i-1)%3)*10;
-    if(vert){const xb=bEnd+36,xm=xb+lift*1.6;g+=`<path d="M ${xb} ${c0} Q ${xm} ${(c0+c1)/2} ${xb} ${c1}" fill="none" stroke="var(--root)" stroke-width="2" marker-end="url(#jar)"/>`;}
-    else{const yb=b0-36,ym=yb-lift*1.6;g+=`<path d="M ${c0} ${yb} Q ${(c0+c1)/2} ${ym} ${c1} ${yb}" fill="none" stroke="var(--root)" stroke-width="2" marker-end="url(#jar)"/>`;}}
-  // numéros des sections (pastilles) : à gauche du manche en vertical, sous les flèches en horizontal
-  Object.entries(byP).forEach(([p,ids])=>{const[q0,q1]=boxA(+p),c=(q0+q1)/2,t=ids.join(' · '),w=Math.max(22,t.length*7+10);
-    const[bx,by]=vert?[Math.max(2,b0-16-w),c-10]:[c-w/2,b0-12-10];
-    g+=`<rect x="${bx}" y="${by}" width="${w}" height="20" rx="10" fill="var(--acc)"/><text x="${bx+w/2}" y="${by+14}" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">${t}</text>`;});
-  const defs=`<defs><marker id="jar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--root)"/></marker></defs>`;
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" font-family="system-ui,sans-serif" style="width:100%;height:auto;display:block;margin:auto;${vert?`max-width:${Math.round(W*1.15)}px`:''}">${defs}${g}</svg>`;
+    const z0=zone(p0),z1=zone(p1),c0=(z0[0]+z0[1])/2+(p1>p0?8:-8),c1=(z1[0]+z1[1])/2+(p1>p0?-8:8),bb=b0-20,lift=bb-22-((i-1)%2)*12;
+    const[x0,y0]=XY(c0,bb),[x1,y1]=XY(c1,bb),[xm,ym]=XY((c0+c1)/2,lift);
+    g+=`<path d="M ${x0} ${y0} Q ${xm} ${ym} ${x1} ${y1}" fill="none" stroke="var(--root)" stroke-width="2.2" stroke-linecap="round" marker-end="url(#jar)"/>`;
+    const[tx,ty]=XY((c0+c1)/2,(bb+lift)/2-4);g+=`<text x="${tx}" y="${ty}" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--root)">m. ${secs[i].a+1}</text>`;}
+  // notes jouées, avec leur nom
+  const seen=new Set();secs.forEach(x=>x.notes.forEach(n=>{const k=n.s+'-'+n.f;if(seen.has(k))return;seen.add(k);
+    const[cx,cy]=XY(fretA(n.f),Bs(n.s)),t=nm[n.pc],fs=t.length>3?7:t.length>2?8:9;
+    g+=`<circle cx="${cx}" cy="${cy}" r="10" fill="var(--acc)"/><text x="${cx}" y="${cy+fs*.36}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#fff">${t}</text>`;}));
+  // numéros des sections, en pastille sur le coin de chaque position
+  Object.entries(byP).forEach(([p,ids])=>{const[z0]=zone(+p),t=ids.join('·'),r=t.length>2?14:11,[x,y]=XY(z0+r+2,b0-16);
+    g+=`<circle cx="${x}" cy="${y}" r="${r}" fill="var(--acc)" stroke="var(--card)" stroke-width="2"/><text x="${x}" y="${y+4}" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">${t}</text>`;});
+  const defs=`<defs><marker id="jar" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--root)"/></marker></defs>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" font-family="system-ui,sans-serif" style="width:100%;height:auto;display:block;margin:auto;${vert?`max-width:${Math.round(W*1.2)}px`:''}">${defs}${g}</svg>`;
 }
+
 
 // ---------- Positions pensées pour tout le morceau ----------
 // Coût d'une position pour une mesure. Si la tablature n'est pas réadaptée,
@@ -504,7 +520,7 @@ function run(){
   });
   // Le parcours de la main sur tout le manche
   JOURNEY={secs:secs.filter(x=>x.notes&&x.notes.length),key:G,scale:gk.scale};
-  out.insertAdjacentHTML('beforeend',`<div class="card" id="journey"><h2>Le parcours de la main <small>toutes les positions du morceau, dans l'ordre</small></h2><div class="jlist">${JOURNEY.secs.map((x,i)=>`<span class="bar"><b class="jn">${i+1}</b>Mesures ${x.a+1}${x.b>x.a?'–'+(x.b+1):''} · Position ${ROM[x.p]||x.p}</span>`).join('<span class="jarr">→</span>')}</div><div class="fit" id="jneck"></div></div>`);
+  out.insertAdjacentHTML('beforeend',`<div class="card" id="journey"><h2>Le parcours de la main <small>toutes les positions du morceau, dans l'ordre</small></h2><ol class="jlist">${JOURNEY.secs.map((x,i)=>`<li><b class="jn">${i+1}</b><span><b>Position ${ROM[x.p]||x.p}</b><small>mesures ${x.a+1}${x.b>x.a?' à '+(x.b+1):''}</small></span></li>`).join('')}</ol><div class="fit" id="jneck"></div></div>`);
   drawJourney();
   const nPos=new Set(secs.filter(s=>ms.slice(s.a,s.b+1).some(m=>m.notes.length)).map(s=>s.p)).size;
   $('summary').hidden=false;
