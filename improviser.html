@@ -3,7 +3,7 @@
 <title>Improviser · Guitar tools</title>
 <meta name="description" content="Une boucle d'accompagnement (accords, basse, batterie) dans la tonalité de ton choix, avec la gamme et les notes de l'accord en cours sur le manche.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 <style>
 .stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
 @media(max-width:600px){.stage{grid-template-columns:minmax(0,1fr)}}
@@ -116,8 +116,8 @@
 
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=7"></script>
-<script src="assets/music.js?v=3"></script>
+<script src="assets/nav.js?v=8"></script>
+<script src="assets/music.js?v=4"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -188,6 +188,9 @@ fillPresets();$('preset').value=saved.preset!=null&&[...$('preset').options].som
 $('custom').value=saved.custom||'';
 // Arrivée depuis l'onglet Accords : on prend sa tonalité et sa grille
 if(location.hash==='#accords'&&prev&&prev.k!=null){$('root').value=String(M.kRoot(prev.k));$('mode').value=M.kMin(prev.k)?'min':'maj';fillPresets();$('preset').value='acc';}
+
+// Arrivée depuis le cercle des quintes : on prend la tonalité choisie
+if(location.hash==='#ton'&&sc0){$('root').value=String(sc0.r);$('mode').value=sc0.sk==='min'?'min':'maj';fillPresets();$('preset').value='0';}
 
 let PROG=[],K=0,POS=0,playing=false,timer=null,nextT=0,step=0,cur=-1;
 // Rythmes de grattage sur 8 croches (1 & 2 & 3 & 4 &) : D bas, U haut, X étouffé, - silence

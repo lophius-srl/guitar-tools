@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Métronome · Guitar tools</title>
+<meta name="description" content="Métronome avec tap tempo, subdivisions, mesures muettes et entraîneur de tempo qui accélère progressivement.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=9">
+<style>
+.tempo{display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0 6px}
+.tempo button{min-width:52px;min-height:52px;font-size:20px;font-weight:700;border-radius:50%;padding:0}
+.bpm{text-align:center;min-width:150px}
+.bpm b{display:block;font-size:68px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums}
+.bpm small{color:var(--mut);font-size:13px}
+input[type=range]{width:100%;accent-color:var(--acc);margin:8px 0 4px}
+.beats{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0 10px;min-height:30px}
+.beats i{width:26px;height:26px;border-radius:50%;border:2px solid var(--line2);background:var(--card);transition:background .05s}
+.beats i.acc{border-color:var(--acc)}
+.beats i.on{background:var(--acc);border-color:var(--acc)}
+.beats.mute i.on{background:var(--line2);border-color:var(--line2)}
+.ctrl{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.ctrl button{min-height:50px;font-size:16px}
+.ctrl .pri{min-width:170px}
+.trainer{margin-top:4px}
+.trainer .fields{margin-top:10px}
+.trainer input[type=number]{width:84px;font:inherit;font-size:15px;padding:8px;min-height:40px;border-radius:8px;border:1px solid var(--line2);background:var(--card);color:var(--fg)}
+.prog{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:10px 0 4px}.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+.tstat{font-size:14px;color:var(--mut);min-height:1.4em}
+.hud{display:flex;justify-content:center;gap:22px;margin-top:12px}
+@media(max-width:600px){.tempo{gap:6px}.tempo button{min-width:42px;min-height:42px;font-size:17px}.bpm{min-width:96px}.bpm b{font-size:54px}.bpm small{font-size:11px}.trainer input[type=number]{width:100%}}
+</style></head><body><main>
+<p class="brand">Guitar tools</p>
+<nav class="tabs" id="tabs"></nav>
+<h1>Métronome</h1>
+<p class="sub">Travaille lentement et proprement, puis laisse l'entraîneur monter le tempo petit à petit jusqu'à ton objectif.</p>
+
+<div class="card">
+  <div class="tempo">
+    <button id="m5" aria-label="moins 5">−5</button>
+    <button id="m1" aria-label="moins 1">−</button>
+    <div class="bpm"><b id="bpm">80</b><small id="unit">battements par minute</small></div>
+    <button id="p1" aria-label="plus 1">+</button>
+    <button id="p5" aria-label="plus 5">+5</button>
+  </div>
+  <input type="range" id="slider" min="30" max="260" value="80" aria-label="Tempo">
+  <div class="beats" id="beats"></div>
+  <div class="ctrl">
+    <button class="pri" id="go">Démarrer</button>
+    <button id="tap">Tap tempo</button>
+  </div>
+  <div class="hud">
+    <div class="stat">Mesure<b id="bar">–</b></div>
+    <div class="stat">Travail aujourd'hui<b id="clock">0:00</b></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="fields">
+    <label class="field">Mesure <select id="sig">
+      <option value="4/4">4/4</option><option value="3/4">3/4</option><option value="2/4">2/4</option><option value="5/4">5/4</option>
+      <option value="6/8">6/8</option><option value="7/8">7/8</option><option value="12/8">12/8</option></select></label>
+    <label class="field" id="subW">Subdivision <select id="sub"><option value="1">noires</option><option value="2">croches</option><option value="3">triolets</option><option value="4">doubles croches</option></select></label>
+    <label class="field">Mesures muettes <select id="gap"><option value="0">jamais</option><option value="1-1">1 jouée, 1 muette</option><option value="2-2">2 jouées, 2 muettes</option><option value="3-1">3 jouées, 1 muette</option></select></label>
+    <label class="field">Son <select id="snd"><option value="click">clic</option><option value="wood">bois</option><option value="beep">bip doux</option></select></label>
+    <label class="check"><input type="checkbox" id="accent" checked> Accent sur le 1</label>
+  </div>
+</div>
+
+<div class="card trainer">
+  <h2>Entraîneur de tempo <small>le tempo monte tout seul</small></h2>
+  <label class="check"><input type="checkbox" id="tOn"> Accélérer progressivement</label>
+  <div class="fields">
+    <label class="field">Départ <input type="number" id="tFrom" min="30" max="260" value="60"></label>
+    <label class="field">Objectif <input type="number" id="tTo" min="30" max="260" value="100"></label>
+    <label class="field">Pas (bpm) <input type="number" id="tStep" min="1" max="20" value="4"></label>
+    <label class="field">Toutes les <select id="tBars"><option value="1">mesure</option><option value="2">2 mesures</option><option value="4">4 mesures</option><option value="8">8 mesures</option><option value="16">16 mesures</option></select></label>
+    <label class="field">À l'objectif <select id="tEnd"><option value="stay">rester au tempo</option><option value="loop">repartir du départ</option><option value="stop">s'arrêter</option></select></label>
+  </div>
+  <div class="prog"><i id="tProg"></i></div>
+  <div class="tstat" id="tStat">Coche la case, règle le départ et l'objectif, puis démarre.</div>
+</div>
+
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
+</main>
+<script src="assets/nav.js?v=8"></script>
+<script src="assets/music.js?v=4"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+const S=M.get('gt.metro',{bpm:80,sig:'4/4',sub:1,gap:'0',snd:'click',accent:true,t:{on:false,from:60,to:100,step:4,bars:'4',end:'stay'}});
+let bpm=S.bpm,run=false,timer=null,next=0,beat=0,sub=0,barN=0,queue=[],t0=0,elapsed=(()=>{const x=M.get('gt.metroTime',{});return x.d===new Date().toDateString()?x.s:0;})(),trBars=0,taps=[];
+$('sig').value=S.sig;$('sub').value=String(S.sub);$('gap').value=S.gap;$('snd').value=S.snd;$('accent').checked=S.accent;
+$('tOn').checked=S.t.on;$('tFrom').value=S.t.from;$('tTo').value=S.t.to;$('tStep').value=S.t.step;$('tBars').value=S.t.bars;$('tEnd').value=S.t.end;
+const sig=()=>$('sig').value.split('/').map(Number);
+const eighth=()=>sig()[1]===8;
+// groupes de croches accentués dans les mesures en /8
+const strong=n=>{const[a]=sig();if(!eighth())return n===0;return ({6:[0,3],7:[0,2,4],12:[0,3,6,9]})[a].includes(n);};
+function save(){M.set('gt.metro',{bpm,sig:$('sig').value,sub:+$('sub').value,gap:$('gap').value,snd:$('snd').value,accent:$('accent').checked,
+  t:{on:$('tOn').checked,from:+$('tFrom').value,to:+$('tTo').value,step:+$('tStep').value,bars:$('tBars').value,end:$('tEnd').value}});}
+function setBpm(v,keep){bpm=Math.max(30,Math.min(260,Math.round(v)));$('bpm').textContent=bpm;$('slider').value=bpm;if(!keep)save();}
+function drawBeats(){const[a]=sig();$('beats').innerHTML=Array.from({length:a},(_,i)=>`<i class="${strong(i)&&$('accent').checked?'acc':''}"></i>`).join('');
+  $('subW').hidden=eighth();$('unit').textContent=eighth()?'croches par minute':'battements par minute';}
+const muted=n=>{const g=$('gap').value;if(g==='0')return false;const[p,m]=g.split('-').map(Number);return n%(p+m)>=p;};
+function sound(t,level){// level : 2 accent, 1 temps, 0 subdivision
+  const s=$('snd').value;
+  if(s==='click')M.click(t,level===2,level?.5:.22);
+  else if(s==='wood')M.click(t,false,level?.55:.25,level===2?1250:level?880:660);
+  else{M.pluck(t,level===2?84:level?79:76,level?.22:.1,.12);}
+}
+function trainerStep(){// appelé au début de chaque mesure
+  if(!$('tOn').checked)return;
+  const from=+$('tFrom').value,to=+$('tTo').value,step=Math.max(1,+$('tStep').value),every=+$('tBars').value;
+  if(barN===0){setBpm(from,true);trBars=0;}
+  else if(barN%every===0){
+    const up=to>=from,nb=up?Math.min(to,bpm+step):Math.max(to,bpm-step);
+    if(bpm===to){const e=$('tEnd').value;if(e==='loop')setBpm(from,true);else if(e==='stop')stop();}
+    else setBpm(nb,true);
+  }
+  trBars++;
+}
+function tick(){
+  const c=M.audio();
+  while(next<c.currentTime+.12){
+    const[a]=sig(),subs=eighth()?1:+$('sub').value;
+    if(beat===0&&sub===0){trainerStep();}
+    if(!run)return;
+    const lvl=sub>0?0:(strong(beat)&&$('accent').checked?2:1),mute=muted(barN);
+    if(!mute)sound(next,lvl);
+    if(sub===0)queue.push({t:next,beat,bar:barN,mute});
+    next+=60/bpm/subs;
+    if(++sub>=subs){sub=0;if(++beat>=a){beat=0;barN++;}}
+  }
+}
+function paint(){
+  if(!run)return;const now=M.now();
+  while(queue.length&&queue[0].t<=now){const q=queue.shift();
+    $('beats').classList.toggle('mute',q.mute);
+    $('beats').querySelectorAll('i').forEach((el,i)=>el.classList.toggle('on',i===q.beat));
+    $('bar').textContent=q.bar+1;$('bpm').textContent=bpm;$('slider').value=bpm;trainerInfo();}
+  const e=elapsed+(Date.now()-t0)/1000;$('clock').textContent=Math.floor(e/60)+':'+String(Math.floor(e%60)).padStart(2,'0');
+  requestAnimationFrame(paint);
+}
+function trainerInfo(){
+  if(!$('tOn').checked){$('tProg').style.width='0';$('tStat').textContent='Coche la case, règle le départ et l\'objectif, puis démarre.';return;}
+  const from=+$('tFrom').value,to=+$('tTo').value,span=Math.abs(to-from)||1,done=Math.abs(bpm-from)/span;
+  $('tProg').style.width=Math.round(Math.min(1,done)*100)+'%';
+  if(!run){$('tStat').textContent=`De ${from} à ${to} bpm, +${$('tStep').value} toutes les ${$('tBars').value==='1'?'mesures':$('tBars').value+' mesures'}.`;return;}
+  const every=+$('tBars').value,left=every-(barN%every);
+  $('tStat').textContent=bpm===to?`Objectif atteint : ${to} bpm.`:`${bpm} bpm · palier suivant dans ${left} mesure${left>1?'s':''} · objectif ${to}`;
+}
+function start(){M.audio();run=true;beat=0;sub=0;barN=0;queue=[];next=M.now()+.1;t0=Date.now();$('go').textContent='Arrêter';
+  timer=setInterval(tick,25);tick();requestAnimationFrame(paint);}
+function stop(){if(!run)return;run=false;clearInterval(timer);elapsed+=(Date.now()-t0)/1000;M.set('gt.metroTime',{d:new Date().toDateString(),s:Math.round(elapsed)});
+  $('go').textContent='Démarrer';$('beats').querySelectorAll('i').forEach(el=>el.classList.remove('on'));$('beats').classList.remove('mute');save();trainerInfo();}
+$('go').onclick=()=>run?stop():start();
+[['m5',-5],['m1',-1],['p1',1],['p5',5]].forEach(([id,d])=>$(id).onclick=()=>setBpm(bpm+d));
+$('slider').oninput=e=>setBpm(+e.target.value);
+$('tap').onclick=()=>{const t=performance.now();taps=taps.filter(x=>t-x<2500);taps.push(t);
+  if(taps.length>=2){const d=(taps[taps.length-1]-taps[0])/(taps.length-1);setBpm(60000/d);}};
+['sig','sub','gap','snd','accent'].forEach(id=>$(id).onchange=()=>{save();drawBeats();if(id==='sig'){beat=0;sub=0;}});
+['tOn','tFrom','tTo','tStep','tBars','tEnd'].forEach(id=>$(id).onchange=()=>{save();if(id==='tOn'&&$('tOn').checked&&!run)setBpm(+$('tFrom').value);trainerInfo();});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();run?stop():start();}});
+setBpm(bpm,true);drawBeats();trainerInfo();
+const e0=elapsed;$('clock').textContent=Math.floor(e0/60)+':'+String(Math.floor(e0%60)).padStart(2,'0');
+}
+</script></body></html>

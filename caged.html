@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAGED · Guitar tools</title>
+<meta name="description" content="Le système CAGED : les 5 formes d'un accord sur tout le manche, leurs arpèges et la gamme autour de chaque forme.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=9">
+<style>
+:root{--cC:#c2552d;--cA:#2d6a8f;--cG:#7a5bb5;--cE:#2f7d4f;--cD:#a87f12}
+@media(prefers-color-scheme:dark){:root{--cC:#e07a4f;--cA:#6fb0d6;--cG:#a98ae0;--cE:#5fbf86;--cD:#d9b44a}}
+.shapes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:0 0 12px}
+.shapes button{display:flex;flex-direction:column;align-items:center;padding:6px 2px;min-height:54px;border-width:1px;border-top:4px solid var(--c)}
+.shapes button b{font-size:18px;color:var(--c)}.shapes button small{font-size:11px;color:var(--mut)}
+.shapes button.on{background:var(--c);border-color:var(--c)}.shapes button.on b,.shapes button.on small{color:#fff}
+.detail{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-around}
+.detail .nk{flex:1 1 360px;min-width:0}
+.detail .box{flex:none;text-align:center}
+.detail .box svg{width:150px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#all .band{cursor:pointer}
+.chain{font-size:14px;margin:0 0 8px}
+.chain b{padding:1px 6px;border-radius:6px;color:#fff}
+@media(max-width:600px){.detail .box svg{width:120px}}
+</style></head><body><main>
+<p class="brand">Guitar tools</p>
+<nav class="tabs" id="tabs"></nav>
+<h1>CAGED</h1>
+<p class="sub">Un même accord se joue en 5 formes, celles de Do, La, Sol, Mi et Ré à vide, qui s'enchaînent le long du manche. Apprends-les et tu sauras où trouver n'importe quel accord, son arpège et sa gamme partout.</p>
+
+<div class="panel">
+  <div class="fields">
+    <label class="field">Tonique <select id="root"></select></label>
+    <label class="field">Accord <select id="qual"><option value="">majeur</option><option value="m">mineur</option></select></label>
+    <label class="field">Afficher <select id="show"><option value="chord">l'accord</option><option value="arp">l'arpège</option><option value="scale">arpège + gamme</option></select></label>
+    <label class="field">Points <select id="lab"><option value="deg">degrés</option><option value="name">notes</option></select></label>
+    <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+  </div>
+</div>
+
+<div class="card">
+  <h2><span id="t1"></span><small>touche une forme pour la voir en détail</small></h2>
+  <p class="chain" id="chain"></p>
+  <div id="all"></div>
+</div>
+
+<div class="card">
+  <div class="shapes" id="shapes"></div>
+  <h2><span id="t2"></span><small id="t2s"></small></h2>
+  <div class="legend" id="legend"></div>
+  <div class="detail">
+    <div class="nk" id="one"></div>
+    <div class="box" id="box"></div>
+  </div>
+  <div class="acts">
+    <button class="pri" id="pChord">Écouter l'accord</button>
+    <button id="pArp">Écouter l'arpège</button>
+    <button id="prev" aria-label="Forme précédente">← Forme précédente</button>
+    <button id="next" aria-label="Forme suivante">Forme suivante →</button>
+  </div>
+</div>
+
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
+</main>
+<script src="assets/nav.js?v=8"></script>
+<script src="assets/music.js?v=4"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+const LOWHI=[40,45,50,55,59,64],STR=['Mi grave','La','Ré','Sol','Si','Mi aigu'];
+// Les 5 formes à vide (corde grave → corde aiguë), avec la tonique de l'accord à vide
+const SHAPES={
+  '':{C:{r:0,fr:[null,3,2,0,1,0]},A:{r:9,fr:[null,0,2,2,2,0]},G:{r:7,fr:[3,2,0,0,0,3]},E:{r:4,fr:[0,2,2,1,0,0]},D:{r:2,fr:[null,null,0,2,3,2]}},
+  m:{C:{r:0,fr:[null,3,1,0,1,null]},A:{r:9,fr:[null,0,2,2,1,0]},G:{r:7,fr:[3,1,0,0,3,3]},E:{r:4,fr:[0,2,2,0,0,0]},D:{r:2,fr:[null,null,0,2,3,1]}}
+};
+const ORDER=['C','A','G','E','D'],FRN={C:'Do',A:'La',G:'Sol',E:'Mi',D:'Ré'};
+const S=M.get('gt.caged',{root:0,qual:'',show:'arp',lab:'deg',shape:'C'});
+$('root').innerHTML=M.FRS.map((n,i)=>`<option value="${i}">${n} (${M.SH[i]})</option>`).join('');
+$('root').value=String(S.root);$('qual').value=S.qual;$('show').value=S.show;$('lab').value=S.lab;$('nom').value=M.get('gt.nom','fr');
+let shape=S.shape;
+const R=()=>+$('root').value,Q=()=>$('qual').value,minor=()=>Q()==='m';
+const nm=()=>M.names(R(),minor(),$('nom').value==='fr');
+const tones=()=>M.QUALS[Q()];
+const scale=()=>minor()?M.MIN:M.MAJ;
+const col=k=>`var(--c${k})`;
+function save(){M.set('gt.caged',{root:R(),qual:Q(),show:$('show').value,lab:$('lab').value,shape});M.set('gt.nom',$('nom').value);}
+
+// Une forme transposée : doigté, zone de cases et notes de l'arpège dans la zone
+function place(k,oct){
+  const d=SHAPES[Q()][k],sh=(R()-d.r+12)%12+(oct||0)*12,fr=d.fr.map(f=>f==null?null:f+sh),used=fr.filter(f=>f!=null);
+  const lo=Math.min(...used),hi=Math.max(...used);
+  return {k,fr,lo,hi,sh,rootStr:fr.findIndex((f,i)=>f!=null&&(LOWHI[i]+f)%12===R())};
+}
+function occurrences(max){const out=[];ORDER.forEach(k=>{for(let o=0;o<2;o++){const p=place(k,o);if(p.hi<=max)out.push(p);}});return out.sort((a,b)=>a.lo-b.lo||ORDER.indexOf(a.k)-ORDER.indexOf(b.k));}
+// i : index corde grave→aiguë ; le manche dessine e en haut (s=0) et Mi grave en bas (s=5)
+const sOf=i=>5-i;
+function label(pc){const iv=(pc-R()+12)%12;return $('lab').value==='deg'?M.IV[iv]:nm()[pc];}
+function chordDots(lo,hi,opt={}){
+  const dots=[],T=tones().map(t=>(R()+t)%12);
+  for(let i=0;i<6;i++)for(let f=lo;f<=hi;f++){const pc=(LOWHI[i]+f)%12;if(!T.includes(pc))continue;const isR=pc===R();
+    dots.push({s:sOf(i),f,txt:label(pc),fill:isR?'var(--root)':'var(--card)',stroke:isR?'var(--root)':'var(--acc)',sw:isR?1:2,tc:isR?'#fff':'var(--fg)',fw:isR?700:600});}
+  return dots;
+}
+function drawAll(){
+  const el=$('all'),vert=el.clientWidth<560,occ=occurrences(15);
+  const bands=occ.map(p=>({lo:p.lo,hi:p.hi,fill:col(p.k),label:p.k,op:p.k===shape?.3:.12,sw:p.k===shape?2.5:1.2,data:`data-k="${p.k}"`}));
+  el.innerHTML=M.neck({lo:0,hi:15,vert,bands,dots:chordDots(0,15)});
+  const seen=[];occ.forEach(p=>{if(!seen.includes(p.k))seen.push(p.k);});
+  $('chain').innerHTML='De la tête du manche vers le corps : '+occ.filter(p=>p.lo<=12).map(p=>`<b style="background:${col(p.k)}">${p.k}</b>`).join(' → ')+' … puis tout recommence 12 cases plus haut.';
+  $('t1').textContent=`${nm()[R()]}${minor()?'m':''} : les 5 formes sur le manche`;
+}
+function current(){return place(shape,0);}
+function drawOne(){
+  const p=current(),el=$('one'),vert=el.clientWidth<420,lo=Math.max(0,p.lo-1),hi=Math.max(p.hi+1,lo+4),mode=$('show').value;
+  const T=tones().map(t=>(R()+t)%12),SC=scale().map(i=>(R()+i)%12),dots=[];
+  for(let i=0;i<6;i++)for(let f=p.lo;f<=p.hi;f++){
+    const pc=(LOWHI[i]+f)%12,inV=p.fr[i]===f,isR=pc===R();
+    if(inV){dots.push({s:sOf(i),f,txt:label(pc),fill:isR?'var(--root)':'var(--acc)',stroke:isR?'var(--root)':'var(--acc)',tc:'#fff',fw:700});continue;}
+    if(mode!=='chord'&&T.includes(pc)){dots.push({s:sOf(i),f,txt:label(pc),fill:'var(--card)',stroke:isR?'var(--root)':'var(--acc)',sw:2,tc:isR?'var(--root)':'var(--fg)',fw:600});continue;}
+    if(mode==='scale'&&SC.includes(pc))dots.push({s:sOf(i),f,txt:label(pc),fill:'var(--card)',stroke:'var(--str)',tc:'var(--mut)',r:vert?11:9});
+  }
+  el.innerHTML=M.neck({lo,hi,vert,dots,bands:[{lo:p.lo,hi:p.hi,fill:col(p.k),op:.14}]});
+  $('box').innerHTML=M.chordBox({fr:p.fr},{r:R(),q:Q()},nm())+`<div class="muted" style="font-size:12px">doigté de l'accord</div>`;
+  const nx=ORDER[(ORDER.indexOf(shape)+1)%5];
+  $('t2').textContent=`Forme de ${FRN[shape]} (${shape})`;
+  $('t2s').textContent=`cases ${p.lo} à ${p.hi} · fondamentale sur la corde de ${STR[p.rootStr]} · enchaîne ensuite avec la forme ${nx}`;
+  $('legend').innerHTML=`<span><i class="dot" style="background:var(--acc)"></i>accord</span><span><i class="dot root" style="background:var(--root)"></i>fondamentale</span>`+
+    (mode!=='chord'?`<span><i class="dot" style="border:2px solid var(--acc)"></i>autres notes de l'arpège</span>`:'')+
+    (mode==='scale'?`<span><i class="dot scale"></i>gamme ${minor()?'mineure':'majeure'}</span>`:'');
+  $('shapes').innerHTML=ORDER.map(k=>{const q=place(k,0);return `<button data-k="${k}" style="--c:${col(k)}" class="${k===shape?'on':''}"><b>${k}</b><small>case ${q.lo}</small></button>`;}).join('');
+}
+function draw(){drawAll();drawOne();}
+function arpMidis(){const p=current(),T=tones().map(t=>(R()+t)%12),out=[];
+  for(let i=0;i<6;i++)for(let f=p.lo;f<=p.hi;f++)if(T.includes((LOWHI[i]+f)%12))out.push(LOWHI[i]+f);
+  return [...new Set(out)].sort((a,b)=>a-b);}
+$('pChord').onclick=()=>M.strum(M.now()+.05,M.voicingMidis(current().fr),{vol:.2,spread:.03,dur:2.4});
+$('pArp').onclick=()=>{const up=arpMidis(),seq=up.concat(up.slice(0,-1).reverse()),t=M.now()+.05;seq.forEach((m,i)=>M.pluck(t+i*.2,m,.3,.9));};
+const go=d=>{shape=ORDER[(ORDER.indexOf(shape)+d+5)%5];save();draw();};
+$('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);
+$('shapes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;shape=b.dataset.k;save();draw();});
+$('all').addEventListener('click',e=>{const b=e.target.closest('.band');if(!b)return;shape=b.dataset.k;save();draw();$('shapes').scrollIntoView({behavior:'smooth',block:'nearest'});});
+['root','qual','show','lab','nom'].forEach(id=>$(id).onchange=()=>{save();draw();});
+let RW=null;new ResizeObserver(()=>{const w=$('all').clientWidth;if(RW!==null&&(w<560)!==(RW<560))draw();RW=w;}).observe($('all'));
+draw();
+}
+</script></body></html>

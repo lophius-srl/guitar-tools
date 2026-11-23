@@ -2,6 +2,8 @@
 
 Petits outils pour apprendre la guitare, en ligne sur https://lophius-srl.github.io/guitar-tools/
 
+Les onglets sont rangés en 4 familles : **Analyser** (Tab → Gamme, Analyse, Accords), **Théorie** (Gammes, CAGED, Cercle), **Pratiquer** (Improviser, Manche, Oreille) et **Outils** (Accordeur, Métronome).
+
 ## Tab → Gamme
 
 Colle une tablature ASCII (6 cordes, mesures séparées par `|`). Pour chaque mesure :
@@ -41,17 +43,34 @@ Boucle d'accompagnement (accords, basse, batterie de synthèse), en majeur, mine
 
 ## Manche
 
-Jeux d'une minute : « Quelle note ? » et « Trouve la note » ; choix des cases, des cordes, notes naturelles ou toutes ; records et notes à revoir.
+Jeux d'une minute : « Quelle note ? » (réponse au clic ou en jouant, au micro), « Trouve la note » et « Joue la note » (au micro) ; choix des cases, des cordes, notes naturelles ou toutes ; records et notes à revoir.
 
 ## Oreille
 
-Intervalles (montants, descendants, ensemble), types d'accords, degrés après une cadence ; niveaux, série, statistiques par réponse.
+Intervalles (montants, descendants, ensemble), types d'accords, degrés après une cadence, et « Rejouer » : rejouer une courte mélodie à la guitare, vérifiée au micro ; niveaux, série, statistiques par réponse.
+
+## CAGED
+
+Les 5 formes (C, A, G, E, D) d'un accord majeur ou mineur sur tout le manche, puis chaque forme en détail : doigté, arpège, gamme autour, écoute.
+
+## Cercle
+
+Cercle des quintes interactif : armure, notes, accords de la tonalité (à écouter), cadence, relative, tonalités voisines ; liens vers Gammes et Improviser.
+
+## Accordeur
+
+Accordeur au micro (algorithme YIN), plusieurs accordages (standard, Drop D, open G…), La de référence réglable, note de référence à écouter.
+
+## Métronome
+
+Tap tempo, mesures 2/4 à 12/8, subdivisions, accent, mesures muettes, et entraîneur de tempo qui accélère par paliers jusqu'à un objectif.
 
 ## Structure
 
 - Site statique, sans build : chaque outil est une page HTML autonome.
 - `assets/music.js` : bibliothèque commune (notes, accords, tonalité d'une grille, son, dessin du manche et des diagrammes).
-- `assets/nav.js` : la liste des onglets. Ajouter un outil = une nouvelle page + une ligne dans `TOOLS`.
+- `assets/nav.js` : les familles et leurs onglets. Ajouter un outil = une nouvelle page + une ligne dans `GROUPS`.
+- Micro : `M.mic` dans `assets/music.js` (rien n'est enregistré ni envoyé).
 - Bibliothèque externe : jsPDF (cdnjs) pour l'export PDF.
 
 ## Déploiement

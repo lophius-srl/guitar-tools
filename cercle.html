@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cercle des quintes · Guitar tools</title>
+<meta name="description" content="Cercle des quintes interactif : armure, relative, accords de la tonalité et tonalités voisines.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=9">
+<style>
+.duo{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:760px){.duo{grid-template-columns:minmax(0,1fr)}}
+.wheel svg{width:100%;max-width:420px;height:auto;margin:auto;touch-action:manipulation}
+.wheel .w{cursor:pointer}
+.wheel .w path{transition:fill .15s}
+.wheel .w:hover path{filter:brightness(.97)}
+.key h2{font-size:22px;margin:0 0 2px}
+.sig{font-size:15px;margin:0 0 12px;color:var(--mut)}
+.sig b{color:var(--fg)}
+.chords{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:6px 0 12px}
+.chords button{display:flex;flex-direction:column;align-items:center;padding:6px 2px;min-height:56px;gap:0}
+.chords button small{font-size:11px;color:var(--mut)}
+.chords button b{font-size:15px}
+.chords button.t{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.chords button.hot{background:var(--acc);border-color:var(--acc);color:#fff}.chords button.hot small{color:#fff}
+@media(max-width:600px){.chords{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tips{font-size:14px;margin:12px 0 0;padding-left:18px}
+.tips li{margin:3px 0}
+</style></head><body><main>
+<p class="brand">Guitar tools</p>
+<nav class="tabs" id="tabs"></nav>
+<h1>Cercle des quintes</h1>
+<p class="sub">Les 12 tonalités rangées de quinte en quinte. Touche une tonalité : elle s'allume avec ses voisines, qui forment ensemble les accords de la gamme.</p>
+
+<div class="panel">
+  <div class="fields">
+    <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+  </div>
+</div>
+
+<div class="card">
+  <div class="duo">
+    <div class="wheel" id="wheel"></div>
+    <div class="key">
+      <h2 id="kname"></h2>
+      <p class="sig" id="sig"></p>
+      <div class="strip" id="strip"></div>
+      <div class="muted" style="font-size:13px;margin-top:4px">Les accords de la tonalité <span id="chHelp">(touche pour écouter)</span></div>
+      <div class="chords" id="chords"></div>
+      <div class="acts">
+        <button class="pri" id="cad">Écouter la cadence</button>
+        <button id="rel"></button>
+      </div>
+      <div class="acts" style="margin-top:8px">
+        <a href="gammes" id="toScale"><button>Voir la gamme sur le manche</button></a>
+        <a href="improviser#ton" id="toImpro"><button>Improviser dans ce ton</button></a>
+      </div>
+      <ul class="tips" id="tips"></ul>
+    </div>
+  </div>
+</div>
+
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
+</main>
+<script src="assets/nav.js?v=8"></script>
+<script src="assets/music.js?v=4"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+// Position sur le cercle → tonique majeure ; la relative mineure est 3 demi-tons plus bas
+const POS=[0,7,2,9,4,11,6,1,8,3,10,5];
+const MAJ_FR=['Do','Sol','Ré','La','Mi','Si','Fa#','Réb','Lab','Mib','Sib','Fa'],MAJ_EN=['C','G','D','A','E','B','F#','Db','Ab','Eb','Bb','F'];
+const MIN_FR=['Lam','Mim','Sim','Fa#m','Do#m','Sol#m','Ré#m','Sibm','Fam','Dom','Solm','Rém'],MIN_EN=['Am','Em','Bm','F#m','C#m','G#m','D#m','Bbm','Fm','Cm','Gm','Dm'];
+const SIG=[0,1,2,3,4,5,6,-5,-4,-3,-2,-1];// + dièses, − bémols
+const SHARPS_FR=['Fa#','Do#','Sol#','Ré#','La#','Mi#'],FLATS_FR=['Sib','Mib','Lab','Réb','Solb'];
+const SHARPS_EN=['F#','C#','G#','D#','A#','E#'],FLATS_EN=['Bb','Eb','Ab','Db','Gb'];
+const S=M.get('gt.cercle',{p:0,minor:false});
+let P=S.p,MIN=S.minor,hot=-1;
+$('nom').value=M.get('gt.nom','fr');
+const fr=()=>$('nom').value==='fr';
+const K=()=>MIN?(POS[P]+9)%12+12:POS[P];// numéro de tonalité de music.js
+const keyName=()=>{const r=M.kRoot(K()),nm=M.names(r,MIN,fr());return nm[r]+(MIN?(fr()?' mineur':' minor'):(fr()?' majeur':' major'));};
+function save(){M.set('gt.cercle',{p:P,minor:MIN});M.set('gt.nom',$('nom').value);}
+
+function wheel(){
+  const cx=210,cy=210,R1=205,R2=140,R3=88,R4=52,step=Math.PI*2/12;
+  const pt=(a,r)=>[cx+r*Math.sin(a),cy-r*Math.cos(a)];
+  const wedge=(i,ro,ri)=>{const a0=(i-.5)*step,a1=(i+.5)*step,[x0,y0]=pt(a0,ro),[x1,y1]=pt(a1,ro),[x2,y2]=pt(a1,ri),[x3,y3]=pt(a0,ri);
+    return `M${x0} ${y0}A${ro} ${ro} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${ri} ${ri} 0 0 0 ${x3} ${y3}Z`;};
+  const near=i=>{const d=(i-P+12)%12;return d===0?0:d===1||d===11?1:-1;};
+  let g='';
+  for(let i=0;i<12;i++){
+    const n=near(i);
+    [[false,R1,R2],[true,R2,R3]].forEach(([mn,ro,ri])=>{
+      const isK=n===0&&mn===MIN,inK=n>=0;
+      const fill=isK?'var(--acc)':inK?'var(--accL)':'var(--card)',tc=isK?'#fff':'var(--fg)';
+      const[tx,ty]=pt(i*step,(ro+ri)/2),lab=mn?(fr()?MIN_FR:MIN_EN)[i]:(fr()?MAJ_FR:MAJ_EN)[i];
+      g+=`<g class="w" data-i="${i}" data-m="${mn?1:0}" role="button" aria-label="${lab}"><path d="${wedge(i,ro,ri)}" fill="${fill}" stroke="var(--line2)" stroke-width="1.2"/>`+
+         `<text x="${tx}" y="${ty+(mn?4.5:6)}" font-size="${mn?(lab.length>4?12:13.5):(lab.length>3?15:18)}" font-weight="${isK||!mn?700:500}" text-anchor="middle" fill="${tc}">${lab}</text></g>`;
+    });
+    // armure le long du bord intérieur
+    const[sx,sy]=pt(i*step,R3-14),s=SIG[i];
+    g+=`<text x="${sx}" y="${sy+4}" font-size="10.5" text-anchor="middle" fill="var(--mut)">${s===0?'':Math.abs(s)+(s>0?'#':'b')}</text>`;
+  }
+  // centre : tonalité choisie
+  const r=M.kRoot(K()),nm=M.names(r,MIN,fr());
+  g+=`<circle cx="${cx}" cy="${cy}" r="${R4}" fill="var(--card)" stroke="var(--line2)"/>`+
+     `<text x="${cx}" y="${cy-2}" font-size="22" font-weight="800" text-anchor="middle" fill="var(--acc)">${nm[r]}${MIN?'m':''}</text>`+
+     `<text x="${cx}" y="${cy+18}" font-size="11" text-anchor="middle" fill="var(--mut)">${MIN?'mineur':'majeur'}</text>`;
+  $('wheel').innerHTML=`<svg viewBox="0 0 420 420" font-family="system-ui,sans-serif">${g}</svg>`;
+}
+function voicing(c){const v=M.voicings(c)[0];return v?M.voicingMidis(v.fr):M.QUALS[c.q].map(i=>48+c.r+i);}
+function playChord(c,t,dur){M.strum(t,voicing(c),{vol:.18,spread:.02,dur:dur||1.8});}
+function panel(){
+  const k=K(),r=M.kRoot(k),nm=M.names(r,MIN,fr()),s=SIG[P];
+  $('kname').textContent=keyName();
+  const list=s>0?(fr()?SHARPS_FR:SHARPS_EN).slice(0,s):(fr()?FLATS_FR:FLATS_EN).slice(0,-s);
+  $('sig').innerHTML=s===0?'<b>Aucune altération</b> à la clé':`<b>${Math.abs(s)} ${s>0?'dièse':'bémol'}${Math.abs(s)>1?'s':''}</b> à la clé : ${list.join(', ')}`;
+  if(P===6)$('sig').innerHTML+=fr()?' (ou 6 bémols en Solb)':' (or 6 flats in Gb)';
+  const sc=M.kScale(k);
+  $('strip').innerHTML=sc.map((iv,i)=>`<span class="n${i===0?' r':''}"><b>${nm[(r+iv)%12]}</b><small>${M.IV[iv]}</small></span>`).join('');
+  const dia=M.diatonic(k);
+  $('chords').innerHTML=dia.map((c,i)=>`<button data-i="${i}" class="${i===0?'t':''} ${i===hot?'hot':''}"><small>${M.roman(c,k).n}</small><b>${M.chordName(c,nm)}</b></button>`).join('');
+  const relK=MIN?(POS[P]):(POS[P]+9)%12+12;
+  $('rel').textContent=`Relative : ${M.kName(relK,fr())}`;
+  const L=(P+11)%12,Rr=(P+1)%12,nb=i=>MIN?(fr()?MIN_FR:MIN_EN)[i]:(fr()?MAJ_FR:MAJ_EN)[i];
+  $('tips').innerHTML=`<li>Voisines : <b>${nb(L)}</b> et <b>${nb(Rr)}</b>, une seule altération de différence. Idéal pour changer de tonalité en douceur.</li>`+
+    `<li>Les 6 cases allumées sont les accords majeurs et mineurs de la tonalité. Le dernier accord (${M.chordName(dia[MIN?1:6],nm)}) est diminué.</li>`+
+    `<li>En tournant dans le sens des aiguilles : +1 dièse (une quinte plus haut). Dans l'autre sens : +1 bémol.</li>`;
+}
+function draw(){wheel();panel();}
+$('wheel').addEventListener('click',e=>{const w=e.target.closest('.w');if(!w)return;const i=+w.dataset.i,mn=w.dataset.m==='1';
+  P=i;MIN=mn;hot=-1;save();draw();playChord({r:M.kRoot(K()),q:MIN?'m':''},M.now()+.03,1.4);});
+$('chords').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;hot=+b.dataset.i;panel();playChord(M.diatonic(K())[hot],M.now()+.03);});
+$('cad').onclick=()=>{const d=M.diatonic(K()),seq=[0,3,4,0],t=M.now()+.05;
+  // en mineur, la dominante est majeure (V7) pour bien entendre la résolution
+  seq.forEach((i,n)=>{let c=d[i];if(MIN&&i===4)c={r:c.r,q:'7'};playChord(c,t+n*.8,n===3?2.2:.9);setTimeout(()=>{hot=i;panel();},(n*.8+.05)*1000);});
+  setTimeout(()=>{hot=-1;panel();},3600);};
+$('rel').onclick=()=>{MIN=!MIN;hot=-1;save();draw();};
+const share=()=>M.set('gt.scale',{r:M.kRoot(K()),sk:MIN?'min':'maj',ts:Date.now(),src:'cercle'});
+$('toScale').onclick=share;$('toImpro').onclick=share;
+$('nom').onchange=()=>{save();draw();};
+draw();
+}
+</script></body></html>

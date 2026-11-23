@@ -3,12 +3,17 @@
 <title>Oreille · Guitar tools</title>
 <meta name="description" content="Entraîne ton oreille : intervalles, types d'accords et degrés dans une tonalité.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 <style>
 :root{--ok:#2f7d4f}
 @media(prefers-color-scheme:dark){:root{--ok:#5fbf86}}
-.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-@media(max-width:600px){.modes{grid-template-columns:minmax(0,1fr)}}
+.modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+@media(max-width:760px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.slots{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.slots span{min-width:64px;min-height:56px;border:1px dashed var(--line2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--mut)}
+.slots span.ok{background:var(--ok);border:1px solid var(--ok);color:#fff}.slots span.ko{background:var(--out);border:1px solid var(--out);color:#fff}
+.slots span.cur{border:2px solid var(--acc);color:var(--acc)}
+.heard{font-size:13px;color:var(--mut);min-height:1.3em;margin:6px 0 0}
 .modes button{text-align:left;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-height:58px}
 .modes button b{font-size:15px}.modes button small{color:var(--mut);font-size:12px}
 .modes button.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
@@ -39,6 +44,7 @@
     <button data-m="int"><b>Intervalles</b><small>L'écart entre deux notes.</small></button>
     <button data-m="chord"><b>Accords</b><small>Majeur, mineur, septième…</small></button>
     <button data-m="deg"><b>Degrés</b><small>Le rôle d'un accord dans la tonalité.</small></button>
+    <button data-m="rep"><b>Rejouer</b><small>Rejoue la mélodie à la guitare (micro).</small></button>
   </div>
   <div class="fields">
     <label class="field">Niveau <select id="level"></select></label>
@@ -50,12 +56,14 @@
   <div class="hud">
     <button class="pri big" id="go">Écouter</button>
     <button id="again" hidden>Réécouter</button>
+    <button id="micBtn" data-label="Micro" hidden>Micro</button>
     <div class="stat">Série<b id="streak">0</b></div>
     <div class="stat">Réussite<b id="rate">–</b></div>
   </div>
   <p class="prompt" id="prompt">Touche « Écouter », puis choisis ta réponse.</p>
   <div class="answers" id="answers"></div>
   <p class="msg" id="msg"></p>
+  <p class="heard" id="heard"></p>
 </div>
 
 <div class="card">
@@ -65,8 +73,8 @@
 
 <footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Tout se calcule dans ton navigateur.</footer>
 </main>
-<script src="assets/nav.js?v=7"></script>
-<script src="assets/music.js?v=3"></script>
+<script src="assets/nav.js?v=8"></script>
+<script src="assets/music.js?v=4"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -74,11 +82,12 @@ const $=id=>document.getElementById(id);
 const LEVELS={
   int:[['Débutant',[3,4,7,12]],['Moyen',[2,3,4,5,7,9,12]],['Tous',[1,2,3,4,5,6,7,8,9,10,11,12]]],
   chord:[['Majeur / mineur',['','m']],['+ diminué, augmenté',['','m','dim','aug']],['+ septièmes',['','m','7','maj7','m7']]],
-  deg:[['I, IV, V',[0,3,4]],['I, IV, V, vi',[0,3,4,5]],['Tous les degrés',[0,1,2,3,4,5]]]
+  deg:[['I, IV, V',[0,3,4]],['I, IV, V, vi',[0,3,4,5]],['Tous les degrés',[0,1,2,3,4,5]]],
+  rep:[['1 note',[1]],['2 notes',[2]],['3 notes',[3]],['4 notes',[4]],['5 notes',[5]]]
 };
 const SHORT=['','2m','2M','3m','3M','4','triton','5','6m','6M','7m','7M','8'];
 const ROMAN=['I','ii','iii','IV','V','vi','vii°'];
-const ST=M.get('gt.oreille',{mode:'int',level:{int:0,chord:0,deg:0},dir:'up',stats:{}});
+const ST=M.get('gt.oreille',{mode:'int',level:{int:0,chord:0,deg:0},dir:'up',stats:{}});ST.level.rep=ST.level.rep||0;let ignoreUntil=0;
 let mode=ST.mode,Q=null,answered=false,streak=0,tot=0,good=0;
 $('dir').value=ST.dir||'up';
 function save(){ST.mode=mode;ST.dir=$('dir').value;ST.level[mode]=+$('level').value;M.set('gt.oreille',ST);}
@@ -86,6 +95,7 @@ const set=()=>LEVELS[mode][+$('level').value][1];
 function labelOf(a){
   if(mode==='int')return [M.INTERVALS[a],SHORT[a]+(a?` · ${a} demi-ton${a>1?'s':''}`:'')];
   if(mode==='chord')return [M.QNAME[a],'accord '+(M.QSHOW[a]||'majeur')];
+  if(mode==='rep')return [a+' note'+(a>1?'s':''),'mélodie'];
   return [ROMAN[a],['tonique','sus-tonique','médiante','sous-dominante','dominante','relative mineure','sensible'][a]];
 }
 function setMode(){
@@ -94,13 +104,19 @@ function setMode(){
   $('dirWrap').hidden=mode!=='int';
   Q=null;answered=false;$('again').hidden=true;$('go').textContent='Écouter';$('msg').textContent='';
   $('prompt').textContent=mode==='deg'?'Tu entends d\'abord une cadence (I–IV–V–I) pour poser la tonalité, puis l\'accord à reconnaître.':'Touche « Écouter », puis choisis ta réponse.';
-  $('answers').innerHTML=set().map(a=>{const[l,s]=labelOf(a);return `<button data-a="${a}" disabled>${l}<small>${s}</small></button>`;}).join('');
+  $('micBtn').hidden=mode!=='rep';if(mode!=='rep'&&M.mic.on)$('micBtn').click();
+  if(mode==='rep'){$('prompt').textContent='Écoute la mélodie, puis rejoue-la note par note sur ta guitare (n\'importe quelle octave). Active le micro.';$('answers').className='slots';drawSlots();}
+  else{$('answers').className='answers';$('answers').innerHTML=set().map(a=>{const[l,s]=labelOf(a);return `<button data-a="${a}" disabled>${l}<small>${s}</small></button>`;}).join('');}
   renderStats();
 }
 // Accord compact autour d'une basse
 const voice=(root,q)=>M.QUALS[q].map(i=>root+i);
+function drawSlots(){const n=Q&&Q.notes?Q.notes.length:set()[0],got=Q&&Q.got||[],nmL=M.FRS;
+  $('answers').innerHTML=Array.from({length:n},(_,i)=>{const g=got[i];if(g)return `<span class="${g.ok?'ok':'ko'}">${nmL[g.pc]}</span>`;
+    return `<span class="${Q&&Q.notes&&i===got.length&&!answered?'cur':''}">${answered&&Q&&Q.notes?nmL[Q.notes[i]%12]:i+1}</span>`;}).join('');}
 function play(){
   const t=M.now()+.08;
+  if(mode==='rep'){Q.notes.forEach((m,i)=>M.pluck(t+i*.7,m,.32,1.1));ignoreUntil=Date.now()+(Q.notes.length*.7+.9)*1000;return;}
   if(mode==='int'){const[a,b]=$('dir').value==='down'?[Q.lo+Q.a,Q.lo]:[Q.lo,Q.lo+Q.a];
     if($('dir').value==='harm'){M.pluck(t,a,.3,2);M.pluck(t,b,.3,2);}else{M.pluck(t,a,.3,1.4);M.pluck(t+.75,b,.3,1.6);}}
   else if(mode==='chord'){const v=voice(Q.root,Q.a);M.strum(t,v,{vol:.2,spread:.02});M.strum(t+1.3,v,{vol:.0001+.2,spread:0});}
@@ -111,15 +127,32 @@ function newQ(){
   const s=set(),a=s[Math.floor(Math.random()*s.length)];
   if(mode==='int')Q={a,lo:52+Math.floor(Math.random()*12)};
   else if(mode==='chord')Q={a,root:48+Math.floor(Math.random()*12)};
+  else if(mode==='rep'){const k=Math.floor(Math.random()*12),pool=[];for(let m=50;m<=74;m++)if(M.MAJ.includes((m-k+120)%12))pool.push(m);
+    let i=Math.floor(pool.length/2)+Math.floor(Math.random()*5)-2;const notes=[pool[i]];
+    while(notes.length<a){let st;do{st=Math.floor(Math.random()*7)-3;}while(!st||i+st<0||i+st>=pool.length);i+=st;notes.push(pool[i]);}
+    Q={a,notes,got:[]};}
   else Q={a,root:48+Math.floor(Math.random()*12)};
   answered=false;$('msg').textContent='';$('answers').querySelectorAll('button').forEach(b=>{b.className='';b.disabled=false;});
-  $('again').hidden=false;$('go').textContent='Question suivante';play();
+  $('again').hidden=false;$('go').textContent='Question suivante';if(mode==='rep')drawSlots();play();
 }
 function renderStats(){const st=ST.stats[mode]||{};
   $('stats').innerHTML=set().map(a=>{const x=st[a]||[0,0],p=x[1]?Math.round(x[0]/x[1]*100):null;return `<div><span><b>${labelOf(a)[0]}</b></span><span class="muted">${p==null?'pas encore essayé':p+' % · '+x[1]+' essai'+(x[1]>1?'s':'')}</span><span class="meter"><i style="width:${p||0}%"></i></span></div>`;}).join('');}
-$('go').onclick=()=>{M.audio();newQ();};
-$('again').onclick=()=>Q&&play();
-$('answers').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!Q||answered)return;
+$('go').onclick=async()=>{M.audio();
+  if(mode==='rep'&&!M.mic.on){$('micBtn').click();for(let i=0;i<150&&!M.mic.on&&!M.mic.err;i++)await new Promise(r=>setTimeout(r,100));
+    if(!M.mic.on){$('msg').className='msg ko';$('msg').textContent='Ce mode a besoin du micro : autorise-le puis recommence.';return;}}
+  newQ();};
+function record(ok){tot++;ST.stats[mode]=ST.stats[mode]||{};const x=ST.stats[mode][Q.a]||[0,0];x[1]++;if(ok)x[0]++;ST.stats[mode][Q.a]=x;save();
+  if(ok){good++;streak++;}else streak=0;$('streak').textContent=streak;$('rate').textContent=Math.round(good/tot*100)+' %';renderStats();}
+function heardNote(midi){
+  if(mode!=='rep'||!Q||!Q.notes||answered||Date.now()<ignoreUntil)return;
+  const i=Q.got.length,pc=((midi%12)+12)%12,ok=pc===Q.notes[i]%12;Q.got.push({pc,ok});
+  if(!ok){answered=true;record(false);$('msg').className='msg ko';$('msg').textContent=`Note ${i+1} : c'était ${M.FRS[Q.notes[i]%12]}, tu as joué ${M.FRS[pc]}. Touche « Réécouter » pour réessayer.`;}
+  else if(Q.got.length===Q.notes.length){answered=true;record(true);$('msg').className='msg ok';$('msg').textContent='Bravo, tout juste !';setTimeout(()=>{if(answered&&mode==='rep')newQ();},1600);}
+  drawSlots();
+}
+M.micButton($('micBtn'),{onNote:heardNote,onFrame:o=>{$('heard').textContent=o.midi!=null&&Date.now()>=ignoreUntil?`J'entends : ${M.FRS[((o.midi%12)+12)%12]}`:'';},onStop:()=>{$('heard').textContent='';}});
+$('again').onclick=()=>{if(!Q)return;if(mode==='rep'){Q.got=[];answered=false;$('msg').textContent='';drawSlots();}play();};
+$('answers').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!Q||answered||mode==='rep')return;
   const a=mode==='chord'?b.dataset.a:+b.dataset.a,ok=a===Q.a;answered=true;tot++;
   ST.stats[mode]=ST.stats[mode]||{};const x=ST.stats[mode][Q.a]||[0,0];x[1]++;if(ok)x[0]++;ST.stats[mode][Q.a]=x;save();
   if(ok){good++;streak++;b.classList.add('ok');$('msg').className='msg ok';$('msg').textContent='Bravo !';setTimeout(()=>{if(answered)newQ();},1100);}

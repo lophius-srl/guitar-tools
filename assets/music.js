@@ -106,10 +106,10 @@ M.voicingMidis=fr=>fr.map((f,i)=>f==null?null:LOWHI[i]+f).filter(v=>v!=null);
 M.chordBox=(v,c,nm)=>{
   const fr=v.fr,played=fr.filter(f=>f!=null&&f>0),min=played.length?Math.min(...played):1,max=played.length?Math.max(...played):1;
   const base=max<=4?1:min,rows=Math.max(4,max-base+1);
-  const W=150,sw=22,fh=26,x0=20,y0=34,H=y0+rows*fh+26;
+  const W=160,sw=22,fh=26,x0=30,y0=34,H=y0+rows*fh+26;
   const x=i=>x0+i*sw,y=f=>y0+(f-base+.5)*fh;
   let g='';
-  g+=base===1?`<rect x="${x0-1}" y="${y0-5}" width="${5*sw+2}" height="5" fill="var(--str)"/>`:`<text x="${x0+5*sw+8}" y="${y0+fh*.6}" font-size="11" fill="var(--mut)">${base}e</text>`;
+  g+=base===1?`<rect x="${x0-1}" y="${y0-5}" width="${5*sw+2}" height="5" fill="var(--str)"/>`:`<text x="${x0-13}" y="${y0+fh*.6}" font-size="11" text-anchor="end" fill="var(--mut)">${base}</text>`;
   for(let k=0;k<=rows;k++)g+=`<line x1="${x0}" y1="${y0+k*fh}" x2="${x0+5*sw}" y2="${y0+k*fh}" stroke="var(--line2)" stroke-width="1.3"/>`;
   for(let i=0;i<6;i++)g+=`<line x1="${x(i)}" y1="${y0}" x2="${x(i)}" y2="${y0+rows*fh}" stroke="var(--str)" stroke-width="${2.2-i*.25}"/>`;
   fr.forEach((f,i)=>{
@@ -129,9 +129,12 @@ M.neck=o=>{
   const fw=vert?(o.fw||42):(o.fw||50),sh=vert?(o.sh||44):(o.sh||30),r=o.r||(vert?13:11),openW=lo===0?(vert?34:36):0,lab=vert?24:22,top=vert?24:16;
   const head=lab+openW,A=f=>f===0?head-openW/2-2:head+(f-first+0.5)*fw,B=s=>vert?top+(5-s)*sh:top+s*sh;
   const XY=(a,b)=>vert?[b,a]:[a,b];
-  const aEnd=head+nCols*fw,bEnd=top+5*sh,W=vert?bEnd+40:aEnd+10,H=vert?aEnd+10:bEnd+30;
+  const aEnd=head+nCols*fw,bEnd=top+5*sh,W=vert?bEnd+40:aEnd+10,H=vert?aEnd+10:bEnd+30+(o.bands&&o.bands.some(b=>b.label)?18:0);
   const line=(a1,b1,a2,b2,at)=>{const[x1,y1]=XY(a1,b1),[x2,y2]=XY(a2,b2);return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${at}/>`;};
   let g='';
+  (o.bands||[]).forEach(b=>{const a0=b.lo===0&&lo===0?head-openW:A(Math.max(b.lo,first))-fw/2,a1=A(Math.min(b.hi,hi))+fw/2,[x,y]=XY(a0,top-14),[w,h]=vert?[5*sh+28,a1-a0]:[a1-a0,5*sh+28];
+    g+=`<g class="band ${b.cls||''}" ${b.data||''}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="${b.fill}" fill-opacity="${b.op==null?.16:b.op}" stroke="${b.stroke||b.fill}" stroke-opacity=".7" stroke-width="${b.sw||1.5}"/>`+
+      (b.label?(()=>{const[lx,ly]=vert?[x-0,(a0+a1)/2]:[(a0+a1)/2,top+5*sh+40];return vert?'':`<text x="${lx}" y="${ly}" font-size="12" font-weight="700" text-anchor="middle" fill="${b.stroke||b.fill}">${b.label}</text>`;})():'')+`</g>`;});
   if(o.box){const a0=o.box.lo===0?head-openW:A(Math.max(o.box.lo,first))-fw/2,a1=A(o.box.hi)+fw/2,[x,y]=XY(a0,top-14),[w,h]=vert?[5*sh+28,a1-a0]:[a1-a0,5*sh+28];
     g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="var(--accL)" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.5"/>`;}
   [3,5,7,9,15].filter(f=>f>=first&&f<=hi).forEach(f=>{const[x,y]=XY(A(f),top+2.5*sh);g+=`<circle cx="${x}" cy="${y}" r="4" fill="var(--line2)"/>`;});
@@ -169,6 +172,65 @@ M.snare=(t,vol=.35)=>{const c=M.audio(),n=c.createBufferSource(),g=c.createGain(
 M.hat=(t,vol=.12)=>{const c=M.audio(),n=c.createBufferSource(),g=c.createGain(),hp=c.createBiquadFilter();n.buffer=noiseBuf();hp.type='highpass';hp.frequency.value=7000;
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);n.connect(hp).connect(g).connect(master);n.start(t);n.stop(t+.06);};
 
+// Clic de métronome : accent = plus aigu et plus fort
+M.click=(t,accent,vol=.5,f)=>{const c=M.audio(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=f||(accent?1760:1175);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol*(accent?1:.6),t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+.045);
+  const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5000;o.connect(lp).connect(g).connect(master);o.start(t);o.stop(t+.06);};
+
+// ---------- Micro : reconnaissance de la note jouée ----------
+// Algorithme YIN sur le signal du micro. M.mic.start(cb) appelle cb({f,midi,cents,rms,clar}) ~30 fois par seconde
+// (f=0 quand rien n'est joué). Option onNote(midi) : appelée une fois par note tenue (attaque détectée).
+M.A4=()=>M.get('gt.a4',440);
+M.freqToMidi=f=>69+12*Math.log2(f/M.A4());
+M.midiName=(m,nm)=>(nm||M.FRS)[((m%12)+12)%12]+(Math.floor(m/12)-1);
+function yin(x,sr){
+  const N=x.length,W=Math.floor(N/2),tMin=Math.floor(sr/1400),tMax=Math.min(W-1,Math.floor(sr/60)),d=new Float32Array(tMax+2);
+  for(let t=1;t<=tMax+1;t++){let s=0;for(let i=0;i<W;i++){const v=x[i]-x[i+t];s+=v*v;}d[t]=s;}
+  let run=0;d[0]=1;for(let t=1;t<=tMax+1;t++){run+=d[t];d[t]=run?d[t]*t/run:1;}
+  let tau=-1;for(let t=tMin;t<=tMax;t++){if(d[t]<.15){while(t+1<=tMax&&d[t+1]<d[t])t++;tau=t;break;}}
+  if(tau<0){let b=tMin;for(let t=tMin;t<=tMax;t++)if(d[t]<d[b])b=t;if(d[b]>.35)return null;tau=b;}
+  const a=d[tau-1],b=d[tau],c=d[tau+1],den=a-2*b+c,sh=den?(a-c)/(2*den):0;
+  return {f:sr/(tau+(Math.abs(sh)<1?sh:0)),clar:1-b};
+}
+M.mic={on:false,stream:null,src:null,an:null,timer:null,
+  async start(cb,opt={}){
+    if(this.on){this.cb=cb;this.opt=opt;return true;}
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nomic');
+    try{if(navigator.audioSession)navigator.audioSession.type='play-and-record';}catch(e){}
+    const c=M.audio();
+    this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    this.src=c.createMediaStreamSource(this.stream);this.an=c.createAnalyser();this.an.fftSize=4096;this.src.connect(this.an);
+    this.on=true;this.cb=cb;this.opt=opt;const buf=new Float32Array(this.an.fftSize),hist=[];let held=null,cnt=0,silent=0,armed=true,lastRms=0;
+    this.timer=setInterval(()=>{
+      this.an.getFloatTimeDomainData(buf);let rms=0;for(let i=0;i<buf.length;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/buf.length);
+      const thr=this.opt.thr||.008;let out={f:0,midi:null,cents:0,rms,clar:0};
+      // attaque : le volume remonte nettement → on réarme la détection de note
+      if(rms>lastRms*1.8&&rms>thr*2)armed=true;lastRms=rms*.6+lastRms*.4;
+      if(rms>thr){const r=yin(buf.subarray(0,2048),c.sampleRate);
+        if(r){let f=r.f;hist.push(f);if(hist.length>5)hist.shift();const med=hist.slice().sort((a,b)=>a-b)[hist.length>>1];
+          // une seule valeur aberrante (souvent l'octave) est remplacée par la médiane
+          if(Math.abs(1200*Math.log2(f/med))>80)f=med;
+          const mf=M.freqToMidi(f),midi=Math.round(mf);out={f,midi,cents:(mf-midi)*100,rms,clar:r.clar};}}
+      if(out.midi==null){silent++;if(silent>4){held=null;cnt=0;armed=true;hist.length=0;}}else silent=0;
+      if(out.midi!=null){if(out.midi===held)cnt++;else{held=out.midi;cnt=1;armed=true;}
+        if(cnt>=3&&armed&&this.opt.onNote){armed=false;this.opt.onNote(out.midi,out);}}
+      try{this.cb&&this.cb(out);}catch(e){console.error(e);}
+    },33);
+    return true;},
+  stop(){if(!this.on)return;clearInterval(this.timer);try{this.src.disconnect();}catch(e){}this.stream.getTracks().forEach(t=>t.stop());
+    this.on=false;this.cb=null;try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}}
+};
+// Petit bouton micro réutilisable : M.micButton(btn,{onFrame,onNote,onStart,onStop})
+M.micButton=(btn,h)=>{btn.classList.add('mic');const base=btn.dataset.label||btn.textContent;btn.innerHTML=`${base} <span class="lvl"><i></i></span>`;
+  const lvl=btn.querySelector('.lvl i');
+  btn.addEventListener('click',async()=>{
+    if(M.mic.on){M.mic.stop();btn.classList.remove('on');lvl.style.width=0;h.onStop&&h.onStop();return;}
+    M.mic.err=false;
+    try{await M.mic.start(o=>{lvl.style.width=Math.min(100,o.rms*900)+'%';h.onFrame&&h.onFrame(o);},{onNote:h.onNote,thr:h.thr});btn.classList.add('on');h.onStart&&h.onStart();}
+    catch(e){M.mic.err=true;h.onError?h.onError(e):alert('Impossible d\'utiliser le micro. Autorise-le dans les réglages du navigateur (le site doit être ouvert en https).');}
+  });
+};
+
 // ---------- Déblocage du son sur iPhone / iPad ----------
 // 1) Safari ne démarre le son qu'après un geste de l'utilisateur : au premier toucher, on crée et relance le contexte audio.
 // 2) Le bouton « silencieux » de l'iPhone coupe le son Web Audio : on passe la session en mode « lecture »
@@ -180,7 +242,7 @@ function silentWavURL(){const n=800,b=new ArrayBuffer(44+n),v=new DataView(b),w=
   v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
   for(let i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
 M.unlock=()=>{
-  try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}
+  try{if(navigator.audioSession&&!(M.mic&&M.mic.on))navigator.audioSession.type='playback';}catch(e){}
   try{const c=M.audio(),src=c.createBufferSource();src.buffer=c.createBuffer(1,1,22050);src.connect(c.destination);src.start(0);}catch(e){}
   if(unlocked)return;unlocked=true;
   try{const a=document.createElement('audio');a.src=silentWavURL();a.loop=true;a.setAttribute('playsinline','');a.volume=.01;const p=a.play();if(p&&p.catch)p.catch(()=>{unlocked=false;});}catch(e){unlocked=false;}

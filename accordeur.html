@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Accordeur · Guitar tools</title>
+<meta name="description" content="Accordeur de guitare au micro : standard, Drop D, open tunings, La 440 réglable.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2552d'/%3E%3Cg stroke='%23fff' stroke-width='1.6'%3E%3Cpath d='M6 9h20M6 14h20M6 19h20M6 24h20'/%3E%3C/g%3E%3Ccircle cx='13' cy='14' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css?v=9">
+<style>
+:root{--ok:#2f7d4f;--okL:#e2f1e7}
+@media(prefers-color-scheme:dark){:root{--ok:#5fbf86;--okL:#17301f}}
+.tuner{text-align:center}
+.tuner .note{font-size:64px;font-weight:800;line-height:1;margin:4px 0 0;min-height:64px}
+.tuner .note sub{font-size:22px;font-weight:600;color:var(--mut);vertical-align:baseline;margin-left:2px}
+.tuner .hint{font-size:17px;font-weight:600;min-height:1.6em;margin:6px 0 2px}
+.tuner .hint.ok{color:var(--ok)}.tuner .hint.lo,.tuner .hint.hi{color:var(--acc)}
+.tuner .hz{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums;min-height:1.4em}
+.gauge{max-width:360px;margin:0 auto}
+.gauge svg{width:100%;height:auto}
+#needle{transition:transform .12s linear;transform-origin:180px 190px}
+.gauge.ok #needle line{stroke:var(--ok)}.gauge.ok #needle circle{fill:var(--ok)}
+.strings{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:14px 0 4px}
+.strings button{display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 2px;min-height:56px}
+.strings button b{font-size:18px}.strings button small{font-size:11px;color:var(--mut)}
+.strings button.det{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.strings button.tuned{background:var(--okL);border-color:var(--ok)}
+.strings button.lock{background:var(--acc);border-color:var(--acc);color:#fff}.strings button.lock small{color:#fff}
+.go{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.go button{min-width:200px;min-height:48px;font-size:16px}
+</style></head><body><main>
+<p class="brand">Guitar tools</p>
+<nav class="tabs" id="tabs"></nav>
+<h1>Accordeur</h1>
+<p class="sub">Active le micro et joue une corde à vide : l'aiguille montre si elle est trop basse ou trop haute. Touche une corde ci-dessous pour entendre la note de référence.</p>
+
+<div class="panel">
+  <div class="fields">
+    <label class="field">Accordage <select id="tun"></select></label>
+    <label class="field">La de référence <select id="a4"></select></label>
+    <label class="field">Noms <select id="nom"><option value="fr">Do Ré Mi</option><option value="en">C D E</option></select></label>
+  </div>
+</div>
+
+<div class="card tuner">
+  <div class="gauge" id="gauge"></div>
+  <div class="note" id="note">–</div>
+  <div class="hint" id="hint">Le micro est coupé.</div>
+  <div class="hz" id="hz"></div>
+  <div class="strings" id="strings"></div>
+  <p class="muted" style="font-size:13px;margin:4px 0 0" id="shelp">Corde repérée automatiquement. Touche une corde pour l'entendre et la choisir ; touche-la encore pour revenir en automatique.</p>
+  <div class="go"><button class="pri" id="micBtn" data-label="Activer le micro">Activer le micro</button></div>
+</div>
+
+<footer>Fait par <a href="https://www.lophius.be">Lophius</a>. Le son du micro reste dans ton navigateur : rien n'est enregistré ni envoyé.</footer>
+</main>
+<script src="assets/nav.js?v=8"></script>
+<script src="assets/music.js?v=4"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+// Hauteurs de la corde grave à la corde aiguë
+const TUN=[
+  ['std','Standard (Mi La Ré Sol Si Mi)',[40,45,50,55,59,64]],
+  ['dropd','Drop D (Ré La Ré Sol Si Mi)',[38,45,50,55,59,64]],
+  ['half','½ ton plus bas (Mib…)',[39,44,49,54,58,63]],
+  ['full','1 ton plus bas (Ré Sol Do Fa La Ré)',[38,43,48,53,57,62]],
+  ['dropc','Drop C (Do Sol Do Fa La Ré)',[36,43,48,53,57,62]],
+  ['dadgad','DADGAD (Ré La Ré Sol La Ré)',[38,45,50,55,57,62]],
+  ['openg','Open G (Ré Sol Ré Sol Si Ré)',[38,43,50,55,59,62]],
+  ['opend','Open D (Ré La Ré Fa# La Ré)',[38,45,50,54,57,62]],
+  ['opene','Open E (Mi Si Mi Sol# Si Mi)',[40,47,52,56,59,64]]
+];
+const S=M.get('gt.tuner',{tun:'std'});
+$('tun').innerHTML=TUN.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join('');$('tun').value=S.tun;
+$('a4').innerHTML=[432,435,438,439,440,441,442,443,444,446].map(v=>`<option value="${v}">${v} Hz</option>`).join('');$('a4').value=String(M.A4());
+$('nom').value=M.get('gt.nom','fr');
+let lock=null,smooth=null,tuned=new Set(),okSince=0,lastDet=null;
+const strs=()=>TUN.find(t=>t[0]===$('tun').value)[2];
+const nm=m=>{const n=$('nom').value==='fr'?M.FRS:M.SH,f=$('nom').value==='fr'?M.FRF:M.FLT;const pc=((m%12)+12)%12;return [1,3,8,10].includes(pc)&&$('tun').value==='half'?f[pc]:n[pc];};
+
+// Cadran : de -50 à +50 cents
+(function(){
+  const cx=180,cy=190,R=150,ang=c=>(c/50)*62*Math.PI/180,P=(c,r)=>[cx+r*Math.sin(ang(c)),cy-r*Math.cos(ang(c))];
+  let g='';
+  const arc=(c0,c1,r,col,w)=>{const[a,b]=P(c0,r),[c,d]=P(c1,r);return `<path d="M${a} ${b} A${r} ${r} 0 0 1 ${c} ${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;};
+  g+=arc(-50,50,R,'var(--line)',14)+arc(-5,5,R,'var(--ok)',14);
+  for(let c=-50;c<=50;c+=10){const[a,b]=P(c,R-14),[x,y]=P(c,R-(c%50===0?30:24));g+=`<line x1="${a}" y1="${b}" x2="${x}" y2="${y}" stroke="var(--line2)" stroke-width="2"/>`;
+    if(c%50===0||c===0){const[tx,ty]=P(c,R-44);g+=`<text x="${tx}" y="${ty+4}" font-size="12" text-anchor="middle" fill="var(--mut)">${c>0?'+':''}${c}</text>`;}}
+  g+=`<text x="14" y="204" font-size="12" fill="var(--mut)">← trop bas</text><text x="346" y="204" font-size="12" fill="var(--mut)" text-anchor="end">trop haut →</text>`;
+  g+=`<g id="needle" opacity=".35"><line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy-R+8}" stroke="var(--acc)" stroke-width="4" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="9" fill="var(--acc)"/></g>`;
+  $('gauge').innerHTML=`<svg viewBox="0 0 360 210" font-family="system-ui,sans-serif">${g}</svg>`;
+})();
+const needle=()=>document.getElementById('needle');
+
+function drawStrings(){
+  const t=strs();
+  $('strings').innerHTML=t.map((m,i)=>`<button data-i="${i}" class="${lock===i?'lock':''} ${tuned.has(i)?'tuned':''} ${lastDet===i&&lock==null?'det':''}"><b>${nm(m)}</b><small>${6-i===1?'1re':(6-i)+'e'} corde</small></button>`).join('');
+}
+function save(){M.set('gt.tuner',{tun:$('tun').value});M.set('gt.a4',+$('a4').value);M.set('gt.nom',$('nom').value);}
+function reset(){tuned=new Set();lock=null;smooth=null;lastDet=null;drawStrings();}
+['tun','a4','nom'].forEach(id=>$(id).onchange=()=>{save();if(id!=='nom')reset();else drawStrings();});
+
+function show(o){
+  const g=$('gauge');
+  if(!o||!o.f){if(smooth!=null&&o&&o.rms<.004){needle().setAttribute('opacity','.35');}
+    if(!o||o.rms<.004){$('hz').textContent='';$('hint').textContent=M.mic.on?'Joue une corde à vide…':'Le micro est coupé.';$('hint').className='hint';g.classList.remove('ok');}return;}
+  const t=strs(),mf=M.freqToMidi(o.f);
+  // corde visée : celle choisie, sinon la plus proche de la note entendue
+  let i=lock;if(i==null){i=0;t.forEach((m,k)=>{if(Math.abs(mf-m)<Math.abs(mf-t[i]))i=k;});}
+  const dev=(mf-t[i])*100;
+  if(i!==lastDet)smooth=null;
+  smooth=smooth==null||Math.abs(dev-smooth)>60?dev:smooth*.6+dev*.4;
+  const c=Math.max(-50,Math.min(50,smooth));
+  needle().style.transform=`rotate(${c/50*62}deg)`;needle().setAttribute('opacity','1');
+  $('note').innerHTML=`${nm(t[i])}<sub>${Math.floor(t[i]/12)-1}</sub>`;
+  $('hz').textContent=`${o.f.toFixed(1)} Hz · visé ${(M.A4()*Math.pow(2,(t[i]-69)/12)).toFixed(1)} Hz · ${smooth>0?'+':''}${Math.round(smooth)} cents`;
+  const h=$('hint'),ok=Math.abs(smooth)<=5;g.classList.toggle('ok',ok);
+  if(ok){h.textContent='Juste !';h.className='hint ok';if(!okSince)okSince=Date.now();if(Date.now()-okSince>600&&!tuned.has(i)){tuned.add(i);drawStrings();}}
+  else{okSince=0;const st=Math.abs(smooth)/100;
+    h.textContent=smooth<0?(st>=.75?`Trop bas : monte d'environ ${st.toFixed(1).replace('.',',')} demi-ton`:'Un peu bas : tends la corde'):(st>=.75?`Trop haut : descends d'environ ${st.toFixed(1).replace('.',',')} demi-ton`:'Un peu haut : détends la corde');
+    h.className='hint '+(smooth<0?'lo':'hi');}
+  if(lastDet!==i){lastDet=i;drawStrings();}
+}
+$('strings').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i;
+  lock=lock===i?null:i;smooth=null;drawStrings();
+  if(lock!=null){const t=M.now()+.05,m=strs()[i];[0,1.3].forEach(d=>M.pluck(t+d,m,.35,2.2));}});
+M.micButton($('micBtn'),{onFrame:show,
+  onStart:()=>{$('micBtn').firstChild.textContent='Couper le micro ';$('hint').textContent='Joue une corde à vide…';},
+  onStop:()=>{$('micBtn').firstChild.textContent='Activer le micro ';show(null);needle().style.transform='rotate(0deg)';needle().setAttribute('opacity','.35');$('note').textContent='–';$('hz').textContent='';}});
+drawStrings();
+}
+</script></body></html>
