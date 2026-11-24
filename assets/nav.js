@@ -29,7 +29,13 @@
   last[cur]=here;try{localStorage.setItem('gt.navLast',JSON.stringify(last));}catch(e){}
   var target=function(g,i){var l=last[i];var t=g.tools.filter(function(x){return norm(x.href)===l;})[0]||g.tools[0];return url(t.href);};
   nav.innerHTML='<div class="groups">'+GROUPS.map(function(g,i){return '<a href="'+target(g,i)+'"'+(i===cur?' class="on"':'')+'>'+g.label+'</a>';}).join('')+'</div>'+
-    '<div class="subtabs">'+GROUPS[cur].tools.map(function(t){return '<a href="'+url(t.href)+'"'+(norm(t.href)===here?' aria-current="page"':'')+'>'+t.label+'</a>';}).join('')+'</div>';
+    '<div class="subtabs">'+GROUPS[cur].tools.map(function(t){return '<a href="'+url(t.href)+'"'+(norm(t.href)===here?' aria-current="page"':'')+'>'+t.label+'</a>';}).join('')+
+    '<label class="voice" title="Son de guitare utilisé partout sur le site"><span>Son</span><select id="voiceSel" aria-label="Son de guitare"></select></label></div>';
+  // Choix du son de guitare (commun à tous les onglets)
+  window.addEventListener('DOMContentLoaded',function(){var sel=document.getElementById('voiceSel');if(!sel||!window.M)return;
+    sel.innerHTML=M.VOICES.map(function(v){return '<option value="'+v[0]+'">'+v[1]+'</option>';}).join('');sel.value=M.voice();
+    sel.onchange=function(){M.setVoice(sel.value);M.warmVoice();var t=M.now()+.05;M.strum(t,[45,52,57,61,64],{vol:.18,spread:.025,dur:1.6});};
+    M.warmVoice();});
 
   // Application installable (écran d'accueil) et utilisable hors ligne
   if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});

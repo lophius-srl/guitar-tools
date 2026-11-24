@@ -155,11 +155,74 @@ M.audio=()=>{if(!ctx){const C=window.AudioContext||window.webkitAudioContext;ctx
   if(ctx.state!=='running')ctx.resume();return ctx;};
 M.now=()=>M.audio().currentTime;
 // Corde pincée : triangle + octave, filtre qui se ferme, extinction naturelle
-M.pluck=(t,midi,vol=.3,dur=1.6)=>{const c=M.audio(),f=440*Math.pow(2,(midi-69)/12),o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(),g2=c.createGain(),lp=c.createBiquadFilter();
+const pluckSoft=(t,midi,vol=.3,dur=1.6)=>{const c=M.audio(),f=440*Math.pow(2,(midi-69)/12),o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(),g2=c.createGain(),lp=c.createBiquadFilter();
   o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;g2.gain.value=.22;
   lp.type='lowpass';lp.frequency.setValueAtTime(Math.min(f*8,12000),t);lp.frequency.exponentialRampToValueAtTime(f*1.5,t+.6);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
   o2.connect(g2).connect(lp);o.connect(lp);lp.connect(g).connect(master);o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+dur+.05);};
+// ---------- Sons de guitare ----------
+// « douce » = le son d'origine (synthèse simple). Les autres sont des cordes simulées (algorithme Karplus-Strong :
+// un bruit court qui tourne dans une boucle de la longueur de la corde, et s'amortit), puis un « ampli » propre à chaque son.
+M.VOICES=[
+  ['soft','Guitare douce'],['folk','Folk (cordes acier)'],['nylon','Classique (nylon)'],
+  ['clean','Électrique clean'],['crunch','Électrique crunch'],['lead','Électrique saturée']
+];
+const VP={// rho : tenue de la note ; S : 0,5 = sombre, plus bas = plus brillant ; ex : douceur de l'attaque (0 = médiator sec, 1 = pulpe du doigt) ; pk : position de l'attaque sur la corde
+  folk:{rho:.9965,S:.42,ex:.15,pk:.13,vol:1.35},
+  nylon:{rho:.9955,S:.5,ex:.55,pk:.2,vol:1.1},
+  clean:{rho:.9985,S:.45,ex:.25,pk:.18,vol:1.15},
+  crunch:{rho:.9985,S:.45,ex:.2,pk:.15,vol:.7},
+  lead:{rho:.9993,S:.46,ex:.2,pk:.15,vol:.55}
+};
+M.voice=()=>{const v=M.get('gt.voice','soft');return M.VOICES.some(x=>x[0]===v)?v:'soft';};
+M.setVoice=v=>{M.set('gt.voice',v);};
+const ksCache=new Map();
+function ks(midi,v){
+  const c=M.audio(),key=v+'|'+midi;if(ksCache.has(key))return ksCache.get(key);
+  const P=VP[v],sr=c.sampleRate,f=440*Math.pow(2,(midi-69)/12),Nf=sr/f,N=Math.max(2,Math.floor(Nf)),len=Math.floor(sr*(v==='lead'?4:3));
+  const b=c.createBuffer(1,len,sr),d=b.getChannelData(0);
+  // excitation : bruit adouci (doigt ou médiator), puis « position de l'attaque » (on retire un écho décalé)
+  let lp=0;const ex=new Float32Array(N);for(let i=0;i<N;i++){lp=lp*P.ex+(Math.random()*2-1)*(1-P.ex);ex[i]=lp;}
+  const pk=Math.max(1,Math.round(N*P.pk));for(let i=0;i<N;i++)d[i]=ex[i]-(i>=pk?ex[i-pk]:0)*.9;
+  // boucle de la corde ; l'amortissement dépend un peu de la hauteur (les aigus s'éteignent plus vite)
+  const rho=Math.pow(P.rho,Math.max(.6,Math.min(1.6,f/220))*.5+.5);
+  d[N]=rho*d[0];for(let n=N+1;n<len;n++)d[n]=rho*((1-P.S)*d[n-N]+P.S*d[n-N-1]);
+  let mx=0;for(let n=0;n<len;n++)mx=Math.max(mx,Math.abs(d[n]));if(mx)for(let n=0;n<len;n++)d[n]/=mx;
+  // accord fin : la boucle a une longueur entière, on corrige avec la vitesse de lecture
+  const r={b};ksCache.set(key,r);return r;
+}
+// Réglage fin du diapason : la boucle (1-S)·y[n-N] + S·y[n-N-1] retarde de N+S échantillons
+const ksRate=(N,Nf,S)=>(N+S)/Nf;
+// « Amplis » : une chaîne d'effets partagée par son (les notes d'un accord saturent ensemble, comme sur un vrai ampli)
+const amps={};
+function shaper(k){const n=1024,cv=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;cv[i]=Math.tanh(k*x)/Math.tanh(k);}return cv;}
+function amp(v){
+  if(amps[v])return amps[v];const c=M.audio(),inp=c.createGain(),E=(type,f,q,g)=>{const x=c.createBiquadFilter();x.type=type;x.frequency.value=f;if(q!=null)x.Q.value=q;if(g!=null)x.gain.value=g;return x;};
+  let chain=[inp];
+  if(v==='folk')chain.push(E('peaking',180,1,3),E('peaking',2500,1,2),E('highshelf',6000,null,2));
+  if(v==='nylon')chain.push(E('peaking',220,1,3),E('lowpass',3200,.7));
+  if(v==='clean'){chain.push(E('highpass',80,.7),E('peaking',900,.8,2),E('lowpass',5200,.7));}
+  if(v==='crunch'||v==='lead'){const pre=c.createGain();pre.gain.value=v==='lead'?14:5;const ws=c.createWaveShaper();ws.curve=shaper(v==='lead'?3:2);ws.oversample='4x';
+    const post=c.createGain();post.gain.value=v==='lead'?.1:.2;
+    chain.push(E('highpass',110,.7),E('peaking',700,.8,v==='lead'?4:2),pre,ws,post,E('lowpass',v==='lead'?3800:4500,.8),E('peaking',2600,1.2,-3),E('highpass',90,.7));}
+  for(let i=0;i<chain.length-1;i++)chain[i].connect(chain[i+1]);
+  // un peu d'espace (écho très court) pour les sons électriques
+  const out=chain[chain.length-1];out.connect(master);
+  if(v==='clean'||v==='lead'||v==='crunch'){const dl=c.createDelay(1),fb=c.createGain(),wet=c.createGain();dl.delayTime.value=v==='lead'?.32:.18;fb.gain.value=.22;wet.gain.value=v==='lead'?.22:.12;
+    out.connect(dl);dl.connect(fb).connect(dl);dl.connect(wet).connect(master);}
+  amps[v]=inp;return inp;
+}
+M.pluck=(t,midi,vol=.3,dur=1.6)=>{
+  const v=M.voice();if(v==='soft'||!VP[v])return pluckSoft(t,midi,vol,dur);
+  const c=M.audio(),P=VP[v],k=ks(midi,v),src=c.createBufferSource(),g=c.createGain();
+  src.buffer=k.b;const Nf=c.sampleRate/(440*Math.pow(2,(midi-69)/12));src.playbackRate.value=ksRate(Math.max(2,Math.floor(Nf)),Nf,P.S);
+  // les sons électriques tiennent plus longtemps : on laisse sonner un peu plus que demandé
+  const d=v==='lead'?Math.max(dur,1.2)*1.4:v==='soft'?dur:dur*1.15,end=Math.min(t+d,t+k.b.duration-.05);
+  g.gain.setValueAtTime(vol*P.vol,t);g.gain.setValueAtTime(vol*P.vol,Math.max(t,end-.08));g.gain.linearRampToValueAtTime(.0001,end);
+  src.connect(g).connect(amp(v));src.start(t);src.stop(end+.02);
+};
+// Préparer les notes à l'avance évite un petit retard au premier jeu
+M.warmVoice=()=>{const v=M.voice();if(!VP[v])return;setTimeout(()=>{for(let m=40;m<=76;m++)ks(m,v);},0);};
 M.strum=(t,midis,{down=true,spread=.014,vol=.18,dur=1.8}={})=>{const ns=down?midis.slice().sort((a,b)=>a-b):midis.slice().sort((a,b)=>b-a);ns.forEach((m,i)=>M.pluck(t+i*spread,m,vol,dur));};
 M.bass=(t,midi,dur=.5,vol=.45)=>{const c=M.audio(),o=c.createOscillator(),g=c.createGain(),lp=c.createBiquadFilter();o.type='sawtooth';o.frequency.value=440*Math.pow(2,(midi-69)/12);
   lp.type='lowpass';lp.frequency.value=380;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);

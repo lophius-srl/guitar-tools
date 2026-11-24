@@ -65,6 +65,10 @@ Accordeur au micro (algorithme YIN), plusieurs accordages (standard, Drop D, ope
 
 Tap tempo, mesures 2/4 à 12/8, subdivisions, accent, mesures muettes, et entraîneur de tempo qui accélère par paliers jusqu'à un objectif.
 
+## Sons
+
+Menu « Son » en haut de chaque page (commun à tout le site) : guitare douce (son d'origine), folk (cordes acier), classique (nylon), électrique clean, crunch et saturée. Les cordes sont simulées (Karplus-Strong) puis passent dans un « ampli » propre à chaque son.
+
 ## Application
 
 - Installable sur l'écran d'accueil (manifest + service worker `sw.js`) : plein écran, et utilisable hors ligne.
